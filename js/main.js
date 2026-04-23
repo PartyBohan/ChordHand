@@ -432,25 +432,30 @@ midi.addEventListener("noteoff", (e) => {
 });
 
 // =============================================================
-// 渲染循环 —— 轻量化：
-//   · 和弦圆盘只在 CHORD 模式下画
-//   · 底部键盘只在 keybedDirty 时画
-//   · trigger flash 衰减推动 dial 重绘
+// 渲染循环 —— 30fps 节流 + 极轻量：
+//   · dial.draw 内部有 dirty check，没变化直接跳过
+//   · keybed 只在 keybedDirty 时画
+//   · trigger flash 仍以 rAF 频率衰减
 // =============================================================
-function renderLoop() {
+let _lastFrame = 0;
+function renderLoop(ts) {
   if (state.triggerFlash > 0) {
     state.triggerFlash *= 0.88;
     if (state.triggerFlash < 0.02) state.triggerFlash = 0;
   }
-  const s = modeMachine.state;
-  if (s.mode === MODE.CHORD) chordDial.draw(s, state.triggerFlash);
-  if (state.keybedDirty) {
-    keybed.draw(state.activeKeybedNotes);
-    state.keybedDirty = false;
+  // 限 30fps
+  if (ts - _lastFrame >= 32) {
+    _lastFrame = ts;
+    const s = modeMachine.state;
+    if (s.mode === MODE.CHORD) chordDial.draw(s, state.triggerFlash);
+    if (state.keybedDirty) {
+      keybed.draw(state.activeKeybedNotes);
+      state.keybedDirty = false;
+    }
   }
   requestAnimationFrame(renderLoop);
 }
-renderLoop();
+requestAnimationFrame(renderLoop);
 
 // 窗口变化时也需要重画一次 keybed
 window.addEventListener("resize", () => {
@@ -460,7 +465,7 @@ window.addEventListener("resize", () => {
 // =============================================================
 // 摄像头叠加 —— 精简版：只画关键点，不再每帧重跑 DPR + 无手时跳过
 // =============================================================
-const _camCtx = elCamCanvas.getContext("2d", { alpha: true, desynchronized: true });
+const _camCtx = elCamCanvas.getContext("2d");
 let _camW = 0, _camH = 0, _camDPR = 0;
 
 const HAND_CONN = [

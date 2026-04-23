@@ -139,8 +139,8 @@ class HandTracker extends EventTarget {
     }
 
     const ts = performance.now();
-    if (ts - this.lastTs > 16) {
-      // ~60fps max
+    // 30fps —— MediaPipe 推理 + overlay 绘制成本减半，手势判定完全够用
+    if (ts - this.lastTs > 32) {
       this.lastTs = ts;
       const result = this.landmarker.detectForVideo(this.video, ts);
       const hands = this._processResult(result);
