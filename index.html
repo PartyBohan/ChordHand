@@ -229,23 +229,40 @@
       <video id="camera-video" playsinline autoplay muted></video>
       <canvas id="camera-overlay"></canvas>
 
-      <!-- 手势位置：分屏偏左 / 居中 / 偏右（左侧，和透明度对称） -->
-      <div id="pad-pos-panel" aria-label="Gesture position">
-        <div class="pad-pos-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12h8"/><path d="M4 12 2 12"/><path d="M22 12 20 12"/><circle cx="12" cy="12" r="3"/></svg>
+      <!-- 左侧控制栈：手势位置 + 外环标签模式 -->
+      <div id="left-controls">
+        <!-- 手势位置：分屏偏左 / 居中 / 偏右 -->
+        <div id="pad-pos-panel" class="side-panel" aria-label="Gesture position">
+          <div class="side-panel-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12h8"/><path d="M4 12 2 12"/><path d="M22 12 20 12"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <div class="side-panel-pills">
+            <button class="pad-pos-pill" data-pos="left"
+                    data-i18n="pad_pos_left"
+                    data-i18n-attr="title:pad_pos_left">Left</button>
+            <button class="pad-pos-pill active" data-pos="center"
+                    data-i18n="pad_pos_center"
+                    data-i18n-attr="title:pad_pos_center">Middle</button>
+            <button class="pad-pos-pill" data-pos="right"
+                    data-i18n="pad_pos_right"
+                    data-i18n-attr="title:pad_pos_right">Right</button>
+          </div>
+          <div class="side-panel-label" data-i18n="label_pad_pos">Zone</div>
         </div>
-        <div class="pad-pos-pills">
-          <button class="pad-pos-pill" data-pos="left"
-                  data-i18n="pad_pos_left"
-                  data-i18n-attr="title:pad_pos_left">Left</button>
-          <button class="pad-pos-pill active" data-pos="center"
-                  data-i18n="pad_pos_center"
-                  data-i18n-attr="title:pad_pos_center">Center</button>
-          <button class="pad-pos-pill" data-pos="right"
-                  data-i18n="pad_pos_right"
-                  data-i18n-attr="title:pad_pos_right">Right</button>
+
+        <!-- 外环标签：情绪 / 和弦 -->
+        <div id="ring-mode-panel" class="side-panel" aria-label="Ring labels">
+          <div class="side-panel-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8a4 4 0 0 0 0 8"/><circle cx="12" cy="12" r="1"/></svg>
+          </div>
+          <div class="side-panel-pills">
+            <button class="ring-mode-pill active" data-mode="emotion"
+                    data-i18n="ring_mode_emotion">Emotion</button>
+            <button class="ring-mode-pill" data-mode="chord"
+                    data-i18n="ring_mode_chord">Chord</button>
+          </div>
+          <div class="side-panel-label" data-i18n="label_ring_mode">Ring</div>
         </div>
-        <div class="pad-pos-label" data-i18n="label_pad_pos">Hand</div>
       </div>
 
       <!-- 摄像头透明度控制条（右侧） -->

@@ -295,11 +295,7 @@ elCamOpacity.addEventListener("input", applyCamOpacity);
 applyCamOpacity();
 
 // ---------- 手势位置：左 / 中 / 右 ----------
-// 同时做两件事：
-//   1. 挪动圆环视觉位置（避免挡用户的脸）
-//   2. 把手势判定区 _padCenterX 对齐到同一位置（手抬到那边能用）
 const elPadPosPanel = document.getElementById("pad-pos-panel");
-// vw 偏移：左右各移动屏幕宽度的 22%（相对圆环中点）
 const DIAL_SHIFT = { left: "-22vw", center: "0px", right: "22vw" };
 if (elPadPosPanel) {
   elPadPosPanel.addEventListener("click", (e) => {
@@ -308,16 +304,29 @@ if (elPadPosPanel) {
     const pos = btn.dataset.pos;
     const x = PAD_POSITIONS[pos];
     if (x == null) return;
-    // 1) 手势检测中心
     setPadCenterX(x);
-    // 2) 圆环视觉偏移
     elDial.style.setProperty("--dial-shift", DIAL_SHIFT[pos] || "0px");
-    // 3) 切换按钮 active
     elPadPosPanel.querySelectorAll(".pad-pos-pill").forEach((b) =>
       b.classList.toggle("active", b === btn)
     );
   });
 }
+
+// ---------- 外环标签模式：情绪 / 和弦 ----------
+const elRingModePanel = document.getElementById("ring-mode-panel");
+if (elRingModePanel) {
+  elRingModePanel.addEventListener("click", (e) => {
+    const btn = e.target.closest(".ring-mode-pill");
+    if (!btn) return;
+    const mode = btn.dataset.mode; // "emotion" | "chord"
+    chordDial.setLabelMode(mode);
+    elRingModePanel.querySelectorAll(".ring-mode-pill").forEach((b) =>
+      b.classList.toggle("active", b === btn)
+    );
+  });
+}
+// 默认 emotion 模式（HTML 上已经 active）
+chordDial.setLabelMode("emotion");
 
 // =============================================================
 // 状态 chips（i18n-aware）
@@ -564,8 +573,9 @@ window.addEventListener("langchange", () => {
   renderCamChip();
   setModeUI(state.mode);
   updateDialCaption(modeMachine.state);
-  // 重新应用键盘模式按钮的正确 label（data-i18n 会在 setLang 里刷，所以这步只是防御）
   updateKbdBtnLabel();
+  // 圆环标签里的情绪词/副标题随语言切换 → 重建静态层
+  chordDial.invalidate();
 });
 
 // 初始显示

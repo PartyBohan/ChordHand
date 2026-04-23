@@ -1,20 +1,22 @@
 // =============================================================
-// dial-ui.js — 中央控制盘渲染 (v6: 性能优化版)
-//   - 外环 6 区: add9 / maj7 / sus4 / dim / min7 / dom7
-//   - 中心 2 区: 上半 Major / 下半 minor
-//   - 静态层（扇形边框 + 标签 + 中心描边）画到离屏 canvas，永远不重画
-//   - 每帧只画"动态层"：选中高亮 + cursor
+// dial-ui.js — 中央控制盘渲染 (v7: 和弦 / 情绪 双标签模式)
+//   - 默认 "emotion" 模式：外环 6 区显示情绪词 + 情绪色
+//   - "chord" 模式：显示和弦名 Add9/Maj7/... 用中性色
+//   - 中心 Major / minor 永不改变
+//   - 静态层用离屏 canvas 缓存，每帧只画选中高亮 + 光标
 // =============================================================
 
 import { QUADRANT } from "./mode-machine.js";
+import { t } from "./i18n.js";
 
+// ——— 外环 6 区：chord 名 + emotion 名 + 该情绪的基础色相 ———
 const OUTER_ZONES = [
-  { q: QUADRANT.ADD9, deg: 30,  label: "Add9", sub: "明亮·九度" },
-  { q: QUADRANT.MAJ7, deg: 90,  label: "Maj7", sub: "温暖·大七" },
-  { q: QUADRANT.SUS4, deg: 150, label: "sus4", sub: "悬浮·四度" },
-  { q: QUADRANT.DIM,  deg: 210, label: "dim",  sub: "紧张·减七" },
-  { q: QUADRANT.MIN7, deg: 270, label: "m7",   sub: "温柔·小七" },
-  { q: QUADRANT.DOM7, deg: 330, label: "7",    sub: "蓝调·属七" },
+  { q: QUADRANT.ADD9, deg: 30,  chord: "Add9", subKey: "chord_sub_add9", emoKey: "emotion_add9", hue: 45  },
+  { q: QUADRANT.MAJ7, deg: 90,  chord: "Maj7", subKey: "chord_sub_maj7", emoKey: "emotion_maj7", hue: 28  },
+  { q: QUADRANT.SUS4, deg: 150, chord: "sus4", subKey: "chord_sub_sus4", emoKey: "emotion_sus4", hue: 200 },
+  { q: QUADRANT.DIM,  deg: 210, chord: "dim",  subKey: "chord_sub_dim",  emoKey: "emotion_dim",  hue: 0   },
+  { q: QUADRANT.MIN7, deg: 270, chord: "m7",   subKey: "chord_sub_min7", emoKey: "emotion_min7", hue: 230 },
+  { q: QUADRANT.DOM7, deg: 330, chord: "7",    subKey: "chord_sub_dom7", emoKey: "emotion_dom7", hue: 280 },
 ];
 
 export class ChordDial {
@@ -24,12 +26,11 @@ export class ChordDial {
     this._w = 0;
     this._h = 0;
     this._dpr = 0;
-    // 离屏缓存画布（静态层）
     this._staticCanvas = document.createElement("canvas");
     this._staticCtx = this._staticCanvas.getContext("2d");
     this._staticValid = false;
+    this._labelMode = "emotion"; // "emotion" | "chord"
 
-    // 上次绘制参数缓存（dirty check）
     this._lastQ = null;
     this._lastPX = -999;
     this._lastPY = -999;
@@ -44,6 +45,23 @@ export class ChordDial {
     window.addEventListener("resize", () => this._syncSize());
   }
 
+  /** 设置外环标签模式 "emotion" | "chord" */
+  setLabelMode(mode) {
+    if (mode !== "emotion" && mode !== "chord") return;
+    if (mode === this._labelMode) return;
+    this._labelMode = mode;
+    this.invalidate();
+  }
+
+  /** 语言切换或模式切换时调用，强制重画静态层和一切 */
+  invalidate() {
+    this._staticValid = false;
+    this._lastQ = null;
+    this._lastPX = -999;
+    this._lastPY = -999;
+    this._lastActive = false;
+  }
+
   _syncSize() {
     const r = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -55,17 +73,16 @@ export class ChordDial {
     this.canvas.width = r.width * dpr;
     this.canvas.height = r.height * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // 离屏也一起重建
     this._staticCanvas.width = r.width * dpr;
     this._staticCanvas.height = r.height * dpr;
     this._staticCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this._staticValid = false;
   }
 
-  /** 静态层：扇形边框 + 分界线 + 标签 + 中心描边 + 背景光晕 */
   _drawStatic() {
     const ctx = this._staticCtx;
     const w = this._w, h = this._h;
+    const emotion = this._labelMode === "emotion";
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2, cy = h / 2;
     const R = Math.min(w, h) * 0.48;
@@ -80,14 +97,14 @@ export class ChordDial {
     ctx.arc(cx, cy, R + 14, 0, Math.PI * 2);
     ctx.fill();
 
-    // 外圈
+    // 外圈描边
     ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 6 扇区底色（未选中）
+    // 6 扇区底色：情绪模式用情绪色，和弦模式用中性白
     for (const zone of OUTER_ZONES) {
       const a0 = (-(zone.deg + 30) * Math.PI) / 180;
       const a1 = (-(zone.deg - 30) * Math.PI) / 180;
@@ -95,7 +112,15 @@ export class ChordDial {
       ctx.arc(cx, cy, R, Math.min(a0, a1), Math.max(a0, a1), false);
       ctx.arc(cx, cy, centerR, Math.max(a0, a1), Math.min(a0, a1), true);
       ctx.closePath();
-      ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
+      if (emotion) {
+        // 情绪色径向渐变（中心深 → 外圈淡）
+        const g = ctx.createRadialGradient(cx, cy, centerR, cx, cy, R);
+        g.addColorStop(0, `hsla(${zone.hue}, 85%, 55%, 0.32)`);
+        g.addColorStop(1, `hsla(${zone.hue}, 75%, 45%, 0.12)`);
+        ctx.fillStyle = g;
+      } else {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
+      }
       ctx.fill();
     }
 
@@ -120,12 +145,22 @@ export class ChordDial {
       const rLabel = (R + centerR) / 2;
       const tx = cx + Math.cos(ang) * rLabel;
       const ty = cy + Math.sin(ang) * rLabel;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+      // 主标签
+      const mainText = emotion ? t(zone.emoKey) : zone.chord;
+      const subText  = emotion ? zone.chord       : t(zone.subKey);
+      if (emotion) {
+        ctx.fillStyle = `hsla(${zone.hue}, 90%, 78%, 0.95)`;
+      } else {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+      }
       ctx.font = "700 18px -apple-system, sans-serif";
-      ctx.fillText(zone.label, tx, ty - 5);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.42)";
+      ctx.fillText(mainText, tx, ty - 5);
+      // 副标签
+      ctx.fillStyle = emotion
+        ? "rgba(255, 255, 255, 0.45)"
+        : "rgba(255, 255, 255, 0.42)";
       ctx.font = "500 10px -apple-system, sans-serif";
-      ctx.fillText(zone.sub, tx, ty + 11);
+      ctx.fillText(subText, tx, ty + 11);
     }
 
     // 中心圆描边 + 水平分割线
@@ -143,7 +178,7 @@ export class ChordDial {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 中心"Major / minor"文字（未选中基础状态）
+    // 中心 Major / minor（永不改变）
     ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
     ctx.font = "800 34px -apple-system, sans-serif";
     ctx.fillText("Major", cx, cy - centerR * 0.48);
@@ -164,11 +199,10 @@ export class ChordDial {
     if (!this._w) this._syncSize();
     if (!this._w) return;
 
-    // Dirty check：quadrant/padX/padY/flash/padActive 都没变 → 直接跳过
     const dx = state.padX - this._lastPX;
     const dy = state.padY - this._lastPY;
     const flashDiff = Math.abs(triggerFlash - this._lastFlash);
-    const posMoved = dx * dx + dy * dy > 0.00001; // 约 0.3% 变化
+    const posMoved = dx * dx + dy * dy > 0.00001;
     if (
       state.quadrant === this._lastQ &&
       !posMoved &&
@@ -185,13 +219,12 @@ export class ChordDial {
 
     const ctx = this.ctx;
     const w = this._w, h = this._h;
+    const emotion = this._labelMode === "emotion";
     ctx.clearRect(0, 0, w, h);
 
-    // === 1. 画静态层（缓存） ===
     if (!this._staticValid) this._drawStatic();
     ctx.drawImage(this._staticCanvas, 0, 0, w, h);
 
-    // === 2. 动态层：选中区高亮 + 中心填充 + 光标 ===
     const cx = w / 2, cy = h / 2;
     const R = Math.min(w, h) * 0.48;
     const centerR = R * 0.50;
@@ -207,16 +240,24 @@ export class ChordDial {
       ctx.arc(cx, cy, centerR, Math.max(a0, a1), Math.min(a0, a1), true);
       ctx.closePath();
       const grad = ctx.createRadialGradient(cx, cy, centerR, cx, cy, R);
-      grad.addColorStop(0, "rgba(244, 114, 182, 0.55)");
-      grad.addColorStop(1, "rgba(167, 139, 250, 0.08)");
-      ctx.fillStyle = grad;
-      // shadowBlur 只在 flash 时使用
-      if (triggerFlash > 0.05) {
-        ctx.shadowColor = "rgba(244, 114, 182, 0.75)";
-        ctx.shadowBlur = 12 + triggerFlash * 24;
+      if (emotion) {
+        grad.addColorStop(0, `hsla(${zone.hue}, 92%, 65%, 0.8)`);
+        grad.addColorStop(1, `hsla(${zone.hue}, 85%, 50%, 0.15)`);
+        if (triggerFlash > 0.05) {
+          ctx.shadowColor = `hsla(${zone.hue}, 92%, 60%, 0.85)`;
+          ctx.shadowBlur = 14 + triggerFlash * 24;
+        }
+      } else {
+        grad.addColorStop(0, "rgba(244, 114, 182, 0.55)");
+        grad.addColorStop(1, "rgba(167, 139, 250, 0.08)");
+        if (triggerFlash > 0.05) {
+          ctx.shadowColor = "rgba(244, 114, 182, 0.75)";
+          ctx.shadowBlur = 12 + triggerFlash * 24;
+        }
       }
+      ctx.fillStyle = grad;
       ctx.fill();
-      // 选中的 label 放大 + 变白
+      // 选中的 label 放大 + 更亮
       const ang = (-zone.deg * Math.PI) / 180;
       const rLabel = (R + centerR) / 2;
       const tx = cx + Math.cos(ang) * rLabel;
@@ -226,14 +267,16 @@ export class ChordDial {
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#fff";
       ctx.font = "700 22px -apple-system, sans-serif";
-      ctx.fillText(zone.label, tx, ty - 5);
-      ctx.fillStyle = "rgba(244, 114, 182, 0.95)";
+      ctx.fillText(emotion ? t(zone.emoKey) : zone.chord, tx, ty - 5);
+      ctx.fillStyle = emotion
+        ? `hsla(${zone.hue}, 95%, 80%, 0.95)`
+        : "rgba(244, 114, 182, 0.95)";
       ctx.font = "500 10px -apple-system, sans-serif";
-      ctx.fillText(zone.sub, tx, ty + 11);
+      ctx.fillText(emotion ? zone.chord : t(zone.subKey), tx, ty + 11);
       ctx.restore();
     }
 
-    // 中心上下半圆（无论选中与否都画 —— 背景色是静态层的字，需要覆盖渐变）
+    // 中心上下半（覆盖静态层文字以应用选中 highlight）
     const upSel = state.quadrant === QUADRANT.CENTER_UP;
     const dnSel = state.quadrant === QUADRANT.CENTER_DOWN;
 
@@ -279,7 +322,7 @@ export class ChordDial {
     ctx.fill();
     ctx.restore();
 
-    // 中心文字（盖在渐变上）
+    // 中心文字 —— 永远是 Major / minor 不受标签模式影响
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = upSel ? "#fff" : "rgba(255, 255, 255, 0.85)";
@@ -296,7 +339,7 @@ export class ChordDial {
     ctx.font = "500 11px -apple-system, sans-serif";
     ctx.fillText("小三和弦", cx, cy + centerR * 0.56);
 
-    // 光标（手的位置）
+    // 光标
     if (state.padActive) {
       drawCursor(
         ctx,
@@ -318,7 +361,6 @@ function drawCursor(ctx, px, py, color) {
   ctx.beginPath();
   ctx.arc(px, py, 22, 0, Math.PI * 2);
   ctx.fill();
-
   ctx.fillStyle = "#fff";
   ctx.beginPath();
   ctx.arc(px, py, 4, 0, Math.PI * 2);
