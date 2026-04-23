@@ -229,6 +229,16 @@
       <video id="camera-video" playsinline autoplay muted></video>
       <canvas id="camera-overlay"></canvas>
 
+      <!-- 摄像头透明度控制条（右侧） -->
+      <div id="cam-opacity-panel" aria-label="Camera opacity">
+        <div class="cam-op-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <input id="cam-opacity" type="range" min="0" max="100" value="22" />
+        <div class="cam-op-val"><span id="cam-opacity-val">22</span>%</div>
+        <div class="cam-op-label" data-i18n="label_cam_opacity">Camera</div>
+      </div>
+
       <!-- 开机 Hero 屏 —— 启动前铺满全屏 -->
       <div id="hero-screen">
         <div class="hero-inner">

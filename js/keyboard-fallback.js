@@ -1,5 +1,5 @@
 // =============================================================
-// keyboard-fallback.js — 电脑键盘模拟 MIDI 输入 (v3, 13 音)
+// keyboard-fallback.js — 电脑键盘模拟 MIDI 输入 (v4: 可开可关)
 //   A S D F G H J K → 8 个白键 (C D E F G A B C)
 //   W E   T Y U     → 5 个黑键 (C# D# F# G# A#)
 // 自动跟随当前八度
@@ -25,33 +25,59 @@ const REL_MAP = {
 };
 
 let _enabled = false;
+let _pressed = new Set();
+let _onDown = null;
+let _onUp = null;
+
+export function isKeyboardFallbackEnabled() { return _enabled; }
 
 export function enableKeyboardFallback() {
   if (_enabled) return;
   _enabled = true;
-  const pressed = new Set();
+  _pressed = new Set();
 
-  window.addEventListener("keydown", (e) => {
+  _onDown = (e) => {
     if (e.repeat) return;
+    // 不拦截输入框输入等
+    const tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
     const k = e.key.toLowerCase();
     if (REL_MAP[k] !== undefined) {
       const { min } = getRange();
       const n = min + REL_MAP[k];
-      if (!pressed.has(k)) {
-        pressed.add(k);
+      if (!_pressed.has(k)) {
+        _pressed.add(k);
         midi.injectNoteOn(n, 100);
       }
     }
-  });
-  window.addEventListener("keyup", (e) => {
+  };
+  _onUp = (e) => {
     const k = e.key.toLowerCase();
     if (REL_MAP[k] !== undefined) {
       const { min } = getRange();
       const n = min + REL_MAP[k];
-      if (pressed.has(k)) {
-        pressed.delete(k);
+      if (_pressed.has(k)) {
+        _pressed.delete(k);
         midi.injectNoteOff(n);
       }
     }
-  });
+  };
+
+  window.addEventListener("keydown", _onDown);
+  window.addEventListener("keyup", _onUp);
+}
+
+export function disableKeyboardFallback() {
+  if (!_enabled) return;
+  _enabled = false;
+  if (_onDown) window.removeEventListener("keydown", _onDown);
+  if (_onUp) window.removeEventListener("keyup", _onUp);
+  _onDown = _onUp = null;
+  // 把所有"按着"的音关掉，避免卡音
+  const { min } = getRange();
+  for (const k of _pressed) {
+    const n = min + REL_MAP[k];
+    midi.injectNoteOff(n);
+  }
+  _pressed.clear();
 }

@@ -20,7 +20,7 @@ import {
 import { audio, VOICES } from "./audio-engine.js";
 import { ChordDial } from "./dial-ui.js";
 import { Keybed } from "./hud-ui.js";
-import { enableKeyboardFallback } from "./keyboard-fallback.js";
+import { enableKeyboardFallback, disableKeyboardFallback } from "./keyboard-fallback.js";
 import { detectLang, setLang, getLang, t } from "./i18n.js";
 
 // =============================================================
@@ -169,22 +169,51 @@ elBtnStart.addEventListener("click", handleStart);
 // =============================================================
 elBtnKbd.addEventListener("click", async () => {
   try {
+    if (state.kbdActive) {
+      // 关掉键盘模式 → 切回 MIDI
+      disableKeyboardFallback();
+      state.kbdActive = false;
+      elBtnKbd.classList.remove("btn-primary");
+      updateKbdBtnLabel();
+      setMidiStatusByKey("warn", "btn_kbd_disabled_status");
+      // 让 midi-input 重新 scan 一次，恢复外部设备状态显示
+      if (midi.access) {
+        try { midi._scan(); } catch {}
+      }
+      return;
+    }
+    // 开启键盘模式
     if (!audio.ctx) {
       await audio.start();
       applyCurrentVol();
       applyCurrentVoice();
     }
     enableKeyboardFallback();
-    elBtnKbd.classList.add("btn-primary");
     state.kbdActive = true;
-    // 改 label 文本 + 去掉 i18n 绑定，避免被语言切换重置
-    const labelSpan = elBtnKbd.querySelector("[data-i18n]");
-    if (labelSpan) labelSpan.textContent = t("btn_kbd_active");
+    elBtnKbd.classList.add("btn-primary");
+    updateKbdBtnLabel();
     setMidiStatusByKey("ok", "btn_kbd_active_status");
   } catch (err) {
     setMidiStatusRaw("err", err.message || "error");
   }
 });
+
+function updateKbdBtnLabel() {
+  const labelSpan = elBtnKbd.querySelector("[data-i18n]");
+  if (!labelSpan) return;
+  if (state.kbdActive) {
+    // 显示成"切回 MIDI"提示
+    labelSpan.textContent = t("btn_kbd_active");
+    labelSpan.dataset.i18n = "btn_kbd_active";
+    elBtnKbd.dataset.i18nAttr = "title:btn_kbd_active_title";
+    elBtnKbd.setAttribute("title", t("btn_kbd_active_title"));
+  } else {
+    labelSpan.textContent = t("btn_kbd");
+    labelSpan.dataset.i18n = "btn_kbd";
+    elBtnKbd.dataset.i18nAttr = "title:btn_kbd_title";
+    elBtnKbd.setAttribute("title", t("btn_kbd_title"));
+  }
+}
 
 elBtnHelp.addEventListener("click", () => elHelp.classList.remove("hidden"));
 elBtnHelpClose.addEventListener("click", () => elHelp.classList.add("hidden"));
@@ -235,6 +264,17 @@ elBtnDrum.addEventListener("click", () => {
   elBtnDrum.classList.toggle("active", on);
   audio.setDrumShot(on);
 });
+
+// ---------- 摄像头透明度 ----------
+const elCamOpacity = document.getElementById("cam-opacity");
+const elCamOpacityVal = document.getElementById("cam-opacity-val");
+function applyCamOpacity() {
+  const v = parseInt(elCamOpacity.value, 10) / 100;
+  elVideo.style.opacity = String(v);
+  elCamOpacityVal.textContent = elCamOpacity.value;
+}
+elCamOpacity.addEventListener("input", applyCamOpacity);
+applyCamOpacity();
 
 // =============================================================
 // 状态 chips（i18n-aware）
@@ -411,16 +451,42 @@ function renderCameraOverlay(hands) {
   const px = (lm) => lm.x * w;
   const py = (lm) => lm.y * h;
 
-  // 手势操作区提示
+  // 手势操作区提示 —— 加亮，方便用户找到
   const padX = (PAD_LAYOUT.CENTER_X - PAD_LAYOUT.HALF_W) * w;
   const padY = (PAD_LAYOUT.CENTER_Y - PAD_LAYOUT.HALF_H) * h;
   const padW = PAD_LAYOUT.HALF_W * 2 * w;
   const padH = PAD_LAYOUT.HALF_H * 2 * h;
   ctx.save();
-  ctx.strokeStyle = "rgba(167, 139, 250, 0.12)";
-  ctx.setLineDash([3, 6]);
-  ctx.lineWidth = 1;
+  // 主框：紫色虚线
+  ctx.strokeStyle = "rgba(167, 139, 250, 0.55)";
+  ctx.setLineDash([8, 8]);
+  ctx.lineWidth = 2;
   ctx.strokeRect(padX, padY, padW, padH);
+  // 四角高亮
+  ctx.setLineDash([]);
+  ctx.strokeStyle = "rgba(244, 114, 182, 0.9)";
+  ctx.lineWidth = 3;
+  const CL = 20;
+  const corners = [
+    [padX, padY, 1, 1],
+    [padX + padW, padY, -1, 1],
+    [padX, padY + padH, 1, -1],
+    [padX + padW, padY + padH, -1, -1],
+  ];
+  for (const [cx, cy, dx, dy] of corners) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + CL * dy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx + CL * dx, cy);
+    ctx.stroke();
+  }
+  // 标签
+  ctx.fillStyle = "rgba(244, 114, 182, 0.95)";
+  ctx.font = "700 11px -apple-system, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+  const label = t("pad_zone_label");
+  ctx.fillText(label, padX + 6, padY - 4);
   ctx.restore();
 
   for (const side of ["left", "right"]) {
@@ -471,11 +537,8 @@ window.addEventListener("langchange", () => {
   renderCamChip();
   setModeUI(state.mode);
   updateDialCaption(modeMachine.state);
-  // 如果键盘模式已开启，保持 "Keyboard ✓" 的翻译版本
-  if (state.kbdActive) {
-    const labelSpan = elBtnKbd.querySelector("[data-i18n]");
-    if (labelSpan) labelSpan.textContent = t("btn_kbd_active");
-  }
+  // 重新应用键盘模式按钮的正确 label（data-i18n 会在 setLang 里刷，所以这步只是防御）
+  updateKbdBtnLabel();
 });
 
 // 初始显示
