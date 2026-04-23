@@ -338,7 +338,11 @@ html, body {
   filter: drop-shadow(0 8px 30px rgba(167, 139, 250, 0.55));
 }
 .hero-brand {
-  text-align: left;
+  text-align: center;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 .hero-brand-name {
   font-size: 32px;
@@ -350,12 +354,14 @@ html, body {
   line-height: 1;
 }
 .hero-brand-sub {
-  margin-top: 4px;
   font-size: 11px;
-  letter-spacing: 3px;
+  /* letter-spacing 自适应 —— 让 9 字母的 ChordHand 宽度接近 4 个 CJK 字或 9 拉丁字母的标题 */
+  letter-spacing: 4px;
+  padding-left: 4px; /* 抵消 letter-spacing 导致的右侧偏移，让视觉居中 */
   text-transform: uppercase;
   color: var(--ink-mute);
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .hero-slogan {
@@ -444,43 +450,46 @@ html, body {
     inset 0 -4px 8px rgba(0, 0, 0, 0.6),
     0 4px 0 rgba(0, 0, 0, 0.5);
 }
-/* 彩虹光照：铺满整个键，用呼吸 opacity 变化 */
+/* 彩虹光照：铺满整个键 · 黑白键用同一套半音→色相映射
+   --chroma (0..12) → hue (0..360°)，白键高亮、黑键深色同色
+   每个键按半音错开呼吸延迟，形成一道从左到右流过的彩虹光波 */
 .hk-glow {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  animation: hk-breathe 3.2s ease-in-out infinite;
-  animation-delay: calc(var(--i) * -0.22s);
+  animation: hk-breathe 3.4s ease-in-out infinite;
+  animation-delay: calc(var(--chroma) * -0.2s);
   pointer-events: none;
 }
 .hk-white .hk-glow {
   background:
     linear-gradient(
       180deg,
-      hsla(calc(var(--i) * 45), 95%, 72%, 0.35) 0%,
-      hsla(calc(var(--i) * 45), 95%, 60%, 0.78) 65%,
-      hsla(calc(var(--i) * 45), 95%, 50%, 0.92) 100%
+      hsla(calc(var(--chroma) * 30deg), 95%, 72%, 0.45) 0%,
+      hsla(calc(var(--chroma) * 30deg), 95%, 60%, 0.85) 70%,
+      hsla(calc(var(--chroma) * 30deg), 95%, 50%, 0.95) 100%
     );
   box-shadow:
-    inset 0 -30px 40px hsla(calc(var(--i) * 45), 95%, 55%, 0.45),
-    inset 0 6px 12px hsla(calc(var(--i) * 45), 95%, 80%, 0.4),
-    0 0 38px hsla(calc(var(--i) * 45), 95%, 55%, 0.45);
+    inset 0 -30px 42px hsla(calc(var(--chroma) * 30deg), 95%, 55%, 0.5),
+    inset 0 8px 14px  hsla(calc(var(--chroma) * 30deg), 95%, 82%, 0.45),
+    0 0 42px          hsla(calc(var(--chroma) * 30deg), 95%, 55%, 0.55);
 }
 .hk-black .hk-glow {
+  /* 黑键：同色相，但更深、更饱和，融入整体彩虹 */
   background:
     linear-gradient(
       180deg,
-      hsla(calc(var(--i) * 72 + 200), 92%, 72%, 0.35) 0%,
-      hsla(calc(var(--i) * 72 + 200), 92%, 60%, 0.75) 65%,
-      hsla(calc(var(--i) * 72 + 200), 92%, 50%, 0.9) 100%
+      hsla(calc(var(--chroma) * 30deg), 92%, 55%, 0.55) 0%,
+      hsla(calc(var(--chroma) * 30deg), 92%, 42%, 0.9) 70%,
+      hsla(calc(var(--chroma) * 30deg), 92%, 32%, 0.98) 100%
     );
   box-shadow:
-    inset 0 -20px 30px hsla(calc(var(--i) * 72 + 200), 92%, 55%, 0.55),
-    inset 0 4px 10px hsla(calc(var(--i) * 72 + 200), 92%, 80%, 0.45),
-    0 0 24px hsla(calc(var(--i) * 72 + 200), 92%, 55%, 0.45);
+    inset 0 -20px 28px hsla(calc(var(--chroma) * 30deg), 92%, 42%, 0.6),
+    inset 0 5px 12px   hsla(calc(var(--chroma) * 30deg), 92%, 70%, 0.5),
+    0 0 28px           hsla(calc(var(--chroma) * 30deg), 92%, 45%, 0.55);
 }
 @keyframes hk-breathe {
-  0%, 100% { opacity: 0.45; }
+  0%, 100% { opacity: 0.42; }
   50%      { opacity: 1;    }
 }
 

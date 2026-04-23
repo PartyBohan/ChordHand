@@ -14,7 +14,7 @@ const DICT = {
     brand_tag: "ChordHand",
     // Hero
     hero_brand_name: "PartyKeys",
-    hero_brand_sub: "ChordHand · Gesture Chords",
+    hero_brand_sub: "ChordHand",
     slogan_main: "One hand plays. The other paints.",
     slogan_sub: "Notes in your fingers, chord colors in the air.",
     start: "Start",
@@ -92,7 +92,7 @@ const DICT = {
     brand_name: "音乐密码",
     brand_tag: "ChordHand",
     hero_brand_name: "音乐密码",
-    hero_brand_sub: "ChordHand · 手势和弦",
+    hero_brand_sub: "ChordHand",
     slogan_main: "一手弹琴，一手涂色",
     slogan_sub: "指尖弹音符，空中涂抹和弦色彩",
     start: "启 动",
