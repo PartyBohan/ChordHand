@@ -15,6 +15,8 @@ import {
   modeMachine,
   MODE,
   QUADRANT_TO_CHORD,
+  setPadCenterX,
+  PAD_POSITIONS,
 } from "./mode-machine.js";
 import { audio, VOICES } from "./audio-engine.js";
 import { ChordDial } from "./dial-ui.js";
@@ -291,6 +293,19 @@ function applyCamOpacity() {
 }
 elCamOpacity.addEventListener("input", applyCamOpacity);
 applyCamOpacity();
+
+// ---------- 手势位置：左 / 中 / 右 ----------
+document.querySelectorAll(".pad-pos-pill").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const pos = btn.dataset.pos;
+    const x = PAD_POSITIONS[pos];
+    if (x == null) return;
+    setPadCenterX(x);
+    document.querySelectorAll(".pad-pos-pill").forEach((b) =>
+      b.classList.toggle("active", b === btn)
+    );
+  });
+});
 
 // =============================================================
 // 状态 chips（i18n-aware）

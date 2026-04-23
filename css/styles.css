@@ -609,7 +609,7 @@ html, body {
 
 #chord-dial {
   position: relative;
-  width: min(56vh, 480px);
+  width: min(62vh, 540px);
   aspect-ratio: 1 / 1;
 }
 #chord-dial canvas {
@@ -985,10 +985,10 @@ html, body {
   text-align: center;
 }
 
-/* ---------- 摄像头透明度控制（舞台右侧） ---------- */
+/* ---------- 侧边浮动面板（左右对称） ---------- */
+#pad-pos-panel,
 #cam-opacity-panel {
   position: absolute;
-  right: 18px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
@@ -1004,6 +1004,54 @@ html, body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   font-family: var(--font);
+}
+#pad-pos-panel { left: 18px; }
+#cam-opacity-panel { right: 18px; }
+
+/* 左侧位置三段按钮 */
+.pad-pos-icon {
+  color: var(--ink);
+  opacity: 0.85;
+}
+.pad-pos-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 3px;
+}
+.pad-pos-pill {
+  padding: 6px 10px;
+  min-width: 50px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.pad-pos-pill:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+.pad-pos-pill.active {
+  background: var(--grad-brand);
+  color: #0a0b1e;
+  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.35);
+}
+.pad-pos-label {
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  font-weight: 700;
 }
 .cam-op-icon {
   color: var(--ink);

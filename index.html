@@ -197,11 +197,11 @@
           <span data-i18n="label_voice">Voice</span>
         </div>
         <div class="cb-pills" id="voice-pills">
-          <button class="cb-pill active" data-voice="piano"   data-i18n="voice_piano">Piano</button>
-          <button class="cb-pill"         data-voice="ep"      data-i18n="voice_ep">E-Piano</button>
-          <button class="cb-pill"         data-voice="organ"   data-i18n="voice_organ">Organ</button>
-          <button class="cb-pill"         data-voice="pad"     data-i18n="voice_pad">Pad</button>
-          <button class="cb-pill"         data-voice="vocal"   data-i18n="voice_vocal">Vocal</button>
+          <button class="cb-pill active" data-voice="piano"    data-i18n="voice_piano">Piano</button>
+          <button class="cb-pill"         data-voice="ep"       data-i18n="voice_ep">E-Piano</button>
+          <button class="cb-pill"         data-voice="guzheng"  data-i18n="voice_guzheng">Guzheng</button>
+          <button class="cb-pill"         data-voice="pad"      data-i18n="voice_pad">Pad</button>
+          <button class="cb-pill"         data-voice="vocal"    data-i18n="voice_vocal">Choir</button>
         </div>
       </div>
 
@@ -228,6 +228,25 @@
     <main id="stage">
       <video id="camera-video" playsinline autoplay muted></video>
       <canvas id="camera-overlay"></canvas>
+
+      <!-- 手势位置：分屏偏左 / 居中 / 偏右（左侧，和透明度对称） -->
+      <div id="pad-pos-panel" aria-label="Gesture position">
+        <div class="pad-pos-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12h8"/><path d="M4 12 2 12"/><path d="M22 12 20 12"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="pad-pos-pills">
+          <button class="pad-pos-pill" data-pos="left"
+                  data-i18n="pad_pos_left"
+                  data-i18n-attr="title:pad_pos_left">Left</button>
+          <button class="pad-pos-pill active" data-pos="center"
+                  data-i18n="pad_pos_center"
+                  data-i18n-attr="title:pad_pos_center">Center</button>
+          <button class="pad-pos-pill" data-pos="right"
+                  data-i18n="pad_pos_right"
+                  data-i18n-attr="title:pad_pos_right">Right</button>
+        </div>
+        <div class="pad-pos-label" data-i18n="label_pad_pos">Hand</div>
+      </div>
 
       <!-- 摄像头透明度控制条（右侧） -->
       <div id="cam-opacity-panel" aria-label="Camera opacity">

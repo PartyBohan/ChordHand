@@ -68,8 +68,8 @@ export class ChordDial {
     const w = this._w, h = this._h;
     ctx.clearRect(0, 0, w, h);
     const cx = w / 2, cy = h / 2;
-    const R = Math.min(w, h) * 0.45;
-    const centerR = R * 0.62;
+    const R = Math.min(w, h) * 0.48;
+    const centerR = R * 0.50;
 
     // 背景光晕
     const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
@@ -193,8 +193,8 @@ export class ChordDial {
 
     // === 2. 动态层：选中区高亮 + 中心填充 + 光标 ===
     const cx = w / 2, cy = h / 2;
-    const R = Math.min(w, h) * 0.45;
-    const centerR = R * 0.62;
+    const R = Math.min(w, h) * 0.48;
+    const centerR = R * 0.50;
 
     // 选中的外环扇形
     for (const zone of OUTER_ZONES) {

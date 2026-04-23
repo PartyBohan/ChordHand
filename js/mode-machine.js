@@ -9,13 +9,26 @@ const Y_ON_KEYBOARD = 0.68;
 const Y_RAISED = 0.58;
 
 /** 手势作用区（屏幕归一化） */
-const PAD_CENTER_X = 0.5;
+let _padCenterX = 0.5;     // 可动态调整（左/中/右）
 const PAD_CENTER_Y = 0.38;
 const PAD_HALF_W = 0.22;
 const PAD_HALF_H = 0.22;
 
-/** 中心区半径（pad 内归一化距离 0..1）—— v5 再扩大 */
-const CENTER_RADIUS = 0.58;
+/** 中心区半径（pad 内归一化距离 0..1）—— 缩小中心 = 外环更好瞄准 */
+const CENTER_RADIUS = 0.45;
+
+/** 位置预设 */
+export const PAD_POSITIONS = Object.freeze({
+  left:   0.30,
+  center: 0.50,
+  right:  0.70,
+});
+
+/** 动态调整 pad 中心 X */
+export function setPadCenterX(x) {
+  _padCenterX = Math.max(0.1, Math.min(0.9, x));
+  PAD_LAYOUT.CENTER_X = _padCenterX;
+}
 
 export const MODE = Object.freeze({
   IDLE: "idle",
@@ -140,7 +153,7 @@ export class ModeMachine extends EventTarget {
       s.quadrant = null;
       return;
     }
-    const rawX = (hand.palm.x - PAD_CENTER_X) / PAD_HALF_W;
+    const rawX = (hand.palm.x - _padCenterX) / PAD_HALF_W;
     const rawY = -(hand.palm.y - PAD_CENTER_Y) / PAD_HALF_H;
     s.padX = Math.max(-1, Math.min(1, rawX));
     s.padY = Math.max(-1, Math.min(1, rawY));
@@ -164,7 +177,7 @@ export class ModeMachine extends EventTarget {
 }
 
 export const PAD_LAYOUT = {
-  CENTER_X: PAD_CENTER_X,
+  CENTER_X: _padCenterX,
   CENTER_Y: PAD_CENTER_Y,
   HALF_W: PAD_HALF_W,
   HALF_H: PAD_HALF_H,
