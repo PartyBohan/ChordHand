@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PartyKeys — 手势 × 琴键 交互乐器</title>
+
+  <!-- ================ 预加载：让 MediaPipe / 模型在页面一打开就开始下载 ================ -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://storage.googleapis.com" crossorigin />
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs" crossorigin />
+  <link rel="preload" as="fetch" crossorigin
+        href="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- ⚠ 关键：内联非模块脚本，在一切依赖之前先检测运行环境。
+       如果用 file:// 打开，ES 模块不会执行，这段必须是普通脚本。 -->
+  <script>
+    (function () {
+      var protocol = window.location.protocol;
+      var isFile = protocol === "file:";
+      var isSecure = window.isSecureContext === true;
+      var ua = navigator.userAgent || "";
+      var isChromium = /Chrome|Edg|Edge|Chromium/i.test(ua) && !/OPR\//.test(ua);
+      var hasMIDI = !!navigator.requestMIDIAccess;
+      var hasCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+      if (!isFile && isSecure && hasMIDI && hasCam) return;
+
+      function showBlockingOverlay(title, bodyHTML, cmd) {
+        var overlay = document.createElement("div");
+        overlay.setAttribute(
+          "style",
+          "position:fixed;inset:0;z-index:99999;background:radial-gradient(ellipse at 30% 20%, rgba(244,114,182,0.25), transparent 60%),radial-gradient(ellipse at 80% 80%, rgba(56,189,248,0.25), transparent 60%),linear-gradient(180deg,#0a0b1e,#15163a 60%,#1e1145);color:#eef1ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto;"
+        );
+        var card = document.createElement("div");
+        card.setAttribute(
+          "style",
+          "max-width:640px;width:100%;background:rgba(22,25,60,0.82);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:32px 36px;box-shadow:0 30px 80px rgba(0,0,0,0.6);backdrop-filter:blur(14px);line-height:1.65;"
+        );
+        card.innerHTML =
+          '<div style="font-size:13px;letter-spacing:2px;color:#f472b6;font-weight:700;margin-bottom:6px;">PARTYKEYS · 启动阻塞</div>' +
+          '<h1 style="font-size:22px;font-weight:700;margin:0 0 14px 0;background:linear-gradient(90deg,#f472b6,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">' + title + '</h1>' +
+          '<div style="font-size:14px;color:#cfd4ee;margin-bottom:18px;">' + bodyHTML + '</div>' +
+          (cmd
+            ? '<div style="background:#0a0b1e;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;color:#a7f3d0;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;">' +
+                '<code id="pk-cmd" style="white-space:pre-wrap;word-break:break-all;flex:1;">' + cmd + '</code>' +
+                '<button id="pk-copy" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">复制</button>' +
+              '</div>'
+            : "") +
+          '<div style="font-size:12px;color:#9aa3c7;">提示：macOS 用户可以直接把 <code style="background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px;">PartyKeys</code> 文件夹拖进终端，然后粘贴上面的命令。</div>';
+        overlay.appendChild(card);
+        (document.body || document.documentElement).appendChild(overlay);
+        var btn = card.querySelector("#pk-copy");
+        if (btn && cmd) {
+          btn.addEventListener("click", function () {
+            var ok = function () {
+              btn.textContent = "已复制 ✓";
+              btn.style.color = "#a7f3d0";
+              setTimeout(function () { btn.textContent = "复制"; btn.style.color = "#fff"; }, 1500);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(cmd).then(ok, fallback);
+            } else { fallback(); }
+            function fallback() {
+              var ta = document.createElement("textarea"); ta.value = cmd;
+              ta.style.position = "fixed"; ta.style.opacity = "0";
+              document.body.appendChild(ta); ta.select();
+              try { document.execCommand("copy"); ok(); } catch (e) { btn.textContent = "请手动复制"; }
+              document.body.removeChild(ta);
+            }
+          });
+        }
+      }
+
+      if (isFile) {
+        showBlockingOverlay(
+          "请用本地 HTTP 服务器打开",
+          "你现在是用 <code style=\"background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px;\">file://</code> 协议直接双击打开了 <code style=\"background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px;\">index.html</code>。<br/>这种方式下浏览器会禁用 <b>Web MIDI</b>、<b>摄像头</b>、<b>ES 模块</b> —— 按钮点了没反应，JS 根本没被执行。<br/><br/>" +
+            "<b>正确启动方式</b>：双击 <code style=\"background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px;\">start.command</code>，或在终端里运行：",
+          "cd PartyKeys && python3 -m http.server 8080\n# 然后浏览器访问 http://localhost:8080"
+        );
+        return;
+      }
+      if (!isSecure) {
+        showBlockingOverlay("非安全上下文", "当前页面不是 HTTPS 或 localhost，浏览器会禁用摄像头和 MIDI。请通过 <code>http://localhost:...</code> 或 HTTPS 站点访问。", null);
+        return;
+      }
+      if (!hasMIDI || !hasCam || !isChromium) {
+        var missing = [];
+        if (!hasMIDI) missing.push("Web MIDI API");
+        if (!hasCam) missing.push("getUserMedia (摄像头)");
+        if (!isChromium) missing.push("Chromium 内核浏览器 (Chrome / Edge)");
+        showBlockingOverlay(
+          "浏览器不支持必要能力",
+          "当前浏览器缺少：<b>" + missing.join("、") + "</b>。<br/>请改用最新版 <b>Google Chrome</b> 或 <b>Microsoft Edge</b> 打开本页面。<br/>Firefox / Safari 目前都不支持 Web MIDI。",
+          null
+        );
+        return;
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部条 -->
+    <header id="topbar">
+      <div class="brand">
+        <span class="brand-glyph">◐</span>
+        <span class="brand-name">PartyKeys</span>
+        <span class="brand-tag">Gesture × Keys</span>
+      </div>
+      <div class="status">
+        <span id="status-midi" class="chip">· MIDI</span>
+        <span id="status-camera" class="chip">· 摄像头</span>
+        <span id="status-mode" class="chip chip-mode">待机</span>
+      </div>
+      <div class="controls">
+        <button id="btn-start" class="btn btn-primary">启 动</button>
+        <button id="btn-kbd-fallback" class="btn" title="用电脑键盘模拟琴键">键盘模式</button>
+        <button id="btn-help" class="btn btn-ghost" title="帮助">?</button>
+      </div>
+    </header>
+
+    <!-- 控制条（八度 / 音量 / 音色 / 贝斯 / 鼓） -->
+    <div id="controlbar">
+      <!-- 八度 -->
+      <div class="cb-group">
+        <div class="cb-label">八度</div>
+        <div class="cb-stepper">
+          <button id="btn-oct-down" class="cb-step" title="低一个八度">−</button>
+          <span id="oct-display" class="cb-stepper-val">C4–C5</span>
+          <button id="btn-oct-up" class="cb-step" title="高一个八度">+</button>
+        </div>
+      </div>
+
+      <!-- 音量 -->
+      <div class="cb-group cb-group-wide">
+        <div class="cb-label">音量</div>
+        <div class="cb-slider-wrap">
+          <input id="vol-slider" type="range" min="0" max="100" value="85" />
+          <span id="vol-display" class="cb-slider-val">85</span>
+        </div>
+      </div>
+
+      <!-- 乐器音色 -->
+      <div class="cb-group">
+        <div class="cb-label">音色</div>
+        <div class="cb-pills" id="voice-pills">
+          <button class="cb-pill active" data-voice="piano">钢琴</button>
+          <button class="cb-pill" data-voice="ep">电钢</button>
+          <button class="cb-pill" data-voice="organ">风琴</button>
+          <button class="cb-pill" data-voice="pad">Pad</button>
+          <button class="cb-pill" data-voice="vocal">人声</button>
+        </div>
+      </div>
+
+      <!-- 节奏点缀 -->
+      <div class="cb-group">
+        <div class="cb-label">节奏</div>
+        <div class="cb-pills">
+          <button id="btn-bass" class="cb-pill" title="按下和弦时打一下贝斯根音">🎸 贝斯</button>
+          <button id="btn-drum" class="cb-pill" title="按下和弦时打一下头拍（底鼓+镲）">🥁 鼓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主舞台 -->
+    <main id="stage">
+      <video id="camera-video" playsinline autoplay muted></video>
+      <canvas id="camera-overlay"></canvas>
+
+      <!-- 中央控制台：只剩和弦圆盘 -->
+      <div id="console-wrap">
+        <div id="chord-dial" class="overlay hidden">
+          <canvas id="dial-canvas"></canvas>
+          <div class="dial-caption">
+            <span class="cap-hand" id="cap-playing-hand">弹琴的手 · </span>
+            <span id="cap-gesture-hand" class="cap-gesture">抬起的手移动到任意区即触发</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 键位可视化（底部，有最大宽度居中） -->
+      <div id="keybed">
+        <div id="keybed-inner">
+          <canvas id="keybed-canvas"></canvas>
+        </div>
+      </div>
+    </main>
+
+    <!-- 加载遮罩 -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="loading-card">
+        <div class="loading-brand">PartyKeys 正在启动</div>
+        <ol class="loading-steps">
+          <li class="loading-step" data-step="audio">
+            <span class="step-dot"></span><span class="step-text">启动音频引擎</span>
+          </li>
+          <li class="loading-step" data-step="model">
+            <span class="step-dot"></span><span class="step-text">下载手势识别模型 <span class="step-sub">(~5MB，仅首次)</span></span>
+          </li>
+          <li class="loading-step" data-step="camera">
+            <span class="step-dot"></span><span class="step-text">请求摄像头授权</span>
+          </li>
+          <li class="loading-step" data-step="midi">
+            <span class="step-dot"></span><span class="step-text">请求 MIDI 授权</span>
+          </li>
+        </ol>
+        <div class="loading-hint">首次启动最慢 5–20 秒，之后模型会走浏览器缓存秒开。</div>
+      </div>
+    </div>
+
+    <!-- 帮助浮层 -->
+    <div id="help-panel" class="panel hidden">
+      <div class="panel-card">
+        <h2>玩法速览</h2>
+        <div class="help-grid">
+          <div class="help-row">
+            <div class="help-badge normal">普通</div>
+            <div class="help-desc"><b>双手都在键盘上</b> —— 正常 MIDI 单音发声。</div>
+          </div>
+          <div class="help-row">
+            <div class="help-badge chord">和弦</div>
+            <div class="help-desc">
+              <b>一只手弹琴 + 另一只手抬起</b><br/>
+              <small>
+                抬起的那只手在 <b>8 个区域</b>切换和弦色彩：<br/>
+                · 中心上半 = <span class="tag">Major</span>　中心下半 = <span class="tag">minor</span><br/>
+                · 外环 6 区（顺时针从上起）：<span class="tag">Maj7</span> · <span class="tag">Add9</span> · <span class="tag">7</span> · <span class="tag">m7</span> · <span class="tag">dim</span> · <span class="tag">sus4</span><br/>
+                按一个单音，整组和弦以该音为根音触发。
+              </small>
+            </div>
+          </div>
+        </div>
+        <p class="small">顶部控制条：调八度 · 调音量 · 换音色（钢琴/电钢/风琴/Pad/人声）· 开关贝斯/鼓 one-shot（每次按和弦打一下头拍）。</p>
+        <p class="small">没有 PartyKeys 键盘？点「键盘模式」，用 <kbd>A S D F G H J K</kbd> 8 个白键（C→C），<kbd>W E T Y U</kbd> 5 个黑键，跟随当前八度。</p>
+        <button id="btn-help-close" class="btn btn-primary">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
