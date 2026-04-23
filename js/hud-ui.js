@@ -10,22 +10,36 @@ export class Keybed {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
+    this._w = 0;
+    this._h = 0;
+    this._dpr = 0;
     this._resize();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => this._resize());
+      ro.observe(canvas);
+    }
     window.addEventListener("resize", () => this._resize());
   }
 
   _resize() {
     const r = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
+    if (!r.width || !r.height) return;
+    if (r.width === this._w && r.height === this._h && dpr === this._dpr) return;
+    this._w = r.width;
+    this._h = r.height;
+    this._dpr = dpr;
     this.canvas.width = r.width * dpr;
     this.canvas.height = r.height * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   draw(active) {
+    if (!this._w) this._resize();
     const ctx = this.ctx;
-    const W = this.canvas.clientWidth;
-    const H = this.canvas.clientHeight;
+    const W = this._w;
+    const H = this._h;
+    if (!W) return;
     ctx.clearRect(0, 0, W, H);
 
     const { min, max } = getRange();

@@ -17,23 +17,41 @@ const OUTER_ZONES = [
   { q: QUADRANT.DOM7, deg: 330, label: "7",    sub: "蓝调·属七" },
 ];
 
-function setupCanvas(canvas) {
-  const r = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = r.width * dpr;
-  canvas.height = r.height * dpr;
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { ctx, w: r.width, h: r.height };
-}
-
 export class ChordDial {
   constructor(canvas) {
     this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
+    this._w = 0;
+    this._h = 0;
+    this._dpr = 0;
+    this._syncSize();
+    // 用 ResizeObserver 代替每帧 getBoundingClientRect —— 不卡
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => this._syncSize());
+      ro.observe(canvas);
+    }
+    window.addEventListener("resize", () => this._syncSize());
+  }
+
+  _syncSize() {
+    const r = this.canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    if (!r.width || !r.height) return;
+    if (r.width === this._w && r.height === this._h && dpr === this._dpr) return;
+    this._w = r.width;
+    this._h = r.height;
+    this._dpr = dpr;
+    this.canvas.width = r.width * dpr;
+    this.canvas.height = r.height * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   draw(state, triggerFlash = 0) {
-    const { ctx, w, h } = setupCanvas(this.canvas);
+    if (!this._w) this._syncSize();
+    const ctx = this.ctx;
+    const w = this._w;
+    const h = this._h;
+    if (!w) return;
     ctx.clearRect(0, 0, w, h);
 
     const cx = w / 2;
@@ -78,7 +96,7 @@ export class ChordDial {
         grad.addColorStop(1, "rgba(167, 139, 250, 0.08)");
         ctx.fillStyle = grad;
         ctx.shadowColor = "rgba(244, 114, 182, 0.8)";
-        ctx.shadowBlur = 24 + triggerFlash * 40;
+        ctx.shadowBlur = 14 + triggerFlash * 30;
       } else {
         ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
       }
@@ -135,7 +153,7 @@ export class ChordDial {
       upGrad.addColorStop(0, "rgba(56, 189, 248, 0.7)");
       upGrad.addColorStop(1, "rgba(34, 211, 238, 0.15)");
       ctx.shadowColor = "rgba(56, 189, 248, 0.85)";
-      ctx.shadowBlur = 28 + triggerFlash * 40;
+      ctx.shadowBlur = 16 + triggerFlash * 30;
     } else {
       upGrad.addColorStop(0, "rgba(40, 48, 100, 0.85)");
       upGrad.addColorStop(1, "rgba(24, 30, 70, 0.55)");
@@ -154,7 +172,7 @@ export class ChordDial {
       dnGrad.addColorStop(0, "rgba(167, 139, 250, 0.75)");
       dnGrad.addColorStop(1, "rgba(139, 92, 246, 0.15)");
       ctx.shadowColor = "rgba(167, 139, 250, 0.85)";
-      ctx.shadowBlur = 28 + triggerFlash * 40;
+      ctx.shadowBlur = 16 + triggerFlash * 30;
     } else {
       dnGrad.addColorStop(0, "rgba(35, 30, 75, 0.9)");
       dnGrad.addColorStop(1, "rgba(20, 18, 50, 0.6)");
@@ -216,8 +234,7 @@ export class ChordDial {
 
 function drawCursor(ctx, px, py, color) {
   ctx.save();
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 22;
+  // 去掉 shadowBlur —— 用径向渐变自身发光即可，省下合成开销
   const grad = ctx.createRadialGradient(px, py, 0, px, py, 24);
   grad.addColorStop(0, "rgba(255, 255, 255, 1)");
   grad.addColorStop(0.35, color);
@@ -227,7 +244,6 @@ function drawCursor(ctx, px, py, color) {
   ctx.arc(px, py, 22, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.shadowBlur = 0;
   ctx.fillStyle = "#fff";
   ctx.beginPath();
   ctx.arc(px, py, 4, 0, Math.PI * 2);
