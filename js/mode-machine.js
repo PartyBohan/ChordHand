@@ -17,11 +17,11 @@ const PAD_HALF_H = 0.22;
 /** 中心区半径（pad 内归一化距离 0..1）—— 缩小中心 = 外环更好瞄准 */
 const CENTER_RADIUS = 0.45;
 
-/** 位置预设 */
+/** 位置预设 —— 对应屏幕上圆环的位置 */
 export const PAD_POSITIONS = Object.freeze({
-  left:   0.30,
+  left:   0.25,   // 画面左四分之一
   center: 0.50,
-  right:  0.70,
+  right:  0.75,   // 画面右四分之一
 });
 
 /** 动态调整 pad 中心 X */

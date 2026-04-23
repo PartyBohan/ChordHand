@@ -228,40 +228,74 @@ export class AudioEngine {
     return this._voiceHandle(oscs, outGain, revSend);
   }
 
-  // -- 电钢 (圆润, 带轻微 wow) --
+  // -- 电钢 (Rhodes 风：tine 金属铛声 + tremolo 颤音 + 长 sustain) --
   _epVoice(note, gain) {
     const ctx = this.ctx;
     const t0 = ctx.currentTime;
     const freq = midiToFreq(note);
-    const { outGain, revSend } = this._makeOutput(0.28);
+    const { outGain, revSend } = this._makeOutput(0.38);
+
+    // --- Tremolo LFO（Rhodes 经典颤音 5.5Hz） ---
+    const tremLFO = ctx.createOscillator();
+    tremLFO.type = "sine";
+    tremLFO.frequency.value = 5.5;
+    const tremDepth = ctx.createGain();
+    tremDepth.gain.value = 0.25; // ±25% 调制
+    tremLFO.connect(tremDepth);
+
+    // Tremolo 总线：初值 1 + LFO ±0.25 → 0.75..1.25
+    const tremBus = ctx.createGain();
+    tremBus.gain.value = 1;
+    tremDepth.connect(tremBus.gain);
+    tremLFO.start(t0);
+
+    // --- 亮度动态低通（按下亮 → 衰减） ---
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.value = 2400;
-    lp.Q.value = 0.7;
-    // 重新接线：所有泛音 → lp → outGain
+    lp.frequency.setValueAtTime(3800, t0);
+    lp.frequency.exponentialRampToValueAtTime(1400, t0 + 1.0);
+    lp.Q.value = 1.1;
+
     const midGain = ctx.createGain();
     midGain.gain.value = 1;
     midGain.connect(lp);
-    lp.connect(outGain);
+    lp.connect(tremBus);
+    tremBus.connect(outGain);
 
+    // --- Tine：5 倍频金属铛铛声，极短衰减 ---
+    const tine = ctx.createOscillator();
+    tine.type = "sine";
+    tine.frequency.value = freq * 5.02; // 微失调 = 金属不和谐感
+    const tineG = ctx.createGain();
+    tineG.gain.setValueAtTime(0.42 * gain, t0);
+    tineG.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
+    tine.connect(tineG);
+    tineG.connect(tremBus);
+    tine.start(t0);
+
+    // --- 主体 sine 泛音（Rhodes 的"球棒敲叉簧"纯净感） ---
     const partials = [
-      { ratio: 1, level: 1.0 },
-      { ratio: 2, level: 0.38 },
-      { ratio: 3.01, level: 0.12 }, // 微微失调带一点 tine
+      { ratio: 1,    level: 1.00 },
+      { ratio: 2.01, level: 0.22 },  // 微失调 2 倍频
+      { ratio: 3,    level: 0.06 },
     ];
     const oscs = this._spawnOscs(partials, freq, "sine", midGain, t0);
-    // 加 triangle 下混给它一点温度
+
+    // --- Triangle 下混给一点 Wurlitzer 温度 ---
     const tri = ctx.createOscillator();
     tri.type = "triangle";
     tri.frequency.value = freq;
-    const tg = ctx.createGain();
-    tg.gain.value = 0.25;
-    tri.connect(tg);
-    tg.connect(midGain);
+    const triG = ctx.createGain();
+    triG.gain.value = 0.16;
+    tri.connect(triG);
+    triG.connect(midGain);
     tri.start(t0);
-    oscs.push({ osc: tri, g: tg });
+    oscs.push({ osc: tri, g: triG });
+    oscs.push({ osc: tine, g: tineG });
+    oscs.push({ osc: tremLFO });
 
-    this._adsr(outGain, t0, 0.01, 0.40 * gain, 0.35, 0.6);
+    // Rhodes 典型包络：软 attack（15ms，比钢琴慢一档） + 长 sustain（1.8s）
+    this._adsr(outGain, t0, 0.018, 0.44 * gain, 0.6, 1.8);
     return this._voiceHandle(oscs, outGain, revSend);
   }
 

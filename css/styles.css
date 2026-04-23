@@ -611,6 +611,15 @@ html, body {
   position: relative;
   width: min(62vh, 540px);
   aspect-ratio: 1 / 1;
+  /* 横向偏移跟随 --dial-shift 变量（左/中/右三档） */
+  transform: translateX(var(--dial-shift, 0));
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 重写 .overlay.hidden 对 #chord-dial 的 scale，保留 translateX */
+#chord-dial.hidden {
+  transform: translateX(var(--dial-shift, 0)) scale(0.95);
+  opacity: 0;
+  pointer-events: none;
 }
 #chord-dial canvas {
   width: 100%; height: 100%;

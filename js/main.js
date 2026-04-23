@@ -145,7 +145,7 @@ async function handleStart() {
       const ok = await midi.init();
       setLoadStep("midi", ok ? "done" : "fail");
     } catch (err) {
-      setMidiStatus("err", err?.message || "未知错误");
+      setMidiStatusRaw("err", err?.message || "error");
       setLoadStep("midi", "fail");
     }
   })();
@@ -295,17 +295,29 @@ elCamOpacity.addEventListener("input", applyCamOpacity);
 applyCamOpacity();
 
 // ---------- 手势位置：左 / 中 / 右 ----------
-document.querySelectorAll(".pad-pos-pill").forEach((btn) => {
-  btn.addEventListener("click", () => {
+// 同时做两件事：
+//   1. 挪动圆环视觉位置（避免挡用户的脸）
+//   2. 把手势判定区 _padCenterX 对齐到同一位置（手抬到那边能用）
+const elPadPosPanel = document.getElementById("pad-pos-panel");
+// vw 偏移：左右各移动屏幕宽度的 22%（相对圆环中点）
+const DIAL_SHIFT = { left: "-22vw", center: "0px", right: "22vw" };
+if (elPadPosPanel) {
+  elPadPosPanel.addEventListener("click", (e) => {
+    const btn = e.target.closest(".pad-pos-pill");
+    if (!btn) return;
     const pos = btn.dataset.pos;
     const x = PAD_POSITIONS[pos];
     if (x == null) return;
+    // 1) 手势检测中心
     setPadCenterX(x);
-    document.querySelectorAll(".pad-pos-pill").forEach((b) =>
+    // 2) 圆环视觉偏移
+    elDial.style.setProperty("--dial-shift", DIAL_SHIFT[pos] || "0px");
+    // 3) 切换按钮 active
+    elPadPosPanel.querySelectorAll(".pad-pos-pill").forEach((b) =>
       b.classList.toggle("active", b === btn)
     );
   });
-});
+}
 
 // =============================================================
 // 状态 chips（i18n-aware）
