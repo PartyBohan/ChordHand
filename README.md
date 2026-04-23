@@ -1,115 +1,122 @@
-# PartyKeys — 手势 × 琴键 交互乐器
+# PartyKeys · ChordHand
 
-一个围绕 **PartyKeys 36 Keys** MIDI 键盘 + **电脑摄像头** 的浏览器端交互乐器原型。
-一只手弹琴，另一只手悬在屏幕前用手势操控声音。
+<p align="center"><img src="logo.svg" width="72" alt="PartyKeys" /></p>
 
----
+<p align="center">
+  <b>One hand plays. The other paints.</b><br/>
+  <i>一手弹琴 · 一手指尖涂抹和弦色彩</i>
+</p>
 
-## 核心交互
-
-**判定规则**：摄像头追踪双手，通过手的高度决定当前模式：
-- 双手都在键盘上 → **普通模式**（正常 MIDI 发声）
-- 左手在键盘上 + 右手举起 → **和弦模式**
-- 右手在键盘上 + 左手举起 → **旋律模式**
-
-### 🎹 和弦模式（左手弹，右手指方位）
-主屏幕出现一个 4 方位圆盘，右手在摄像头前移动选择方位：
-
-| 方位 | 和弦 | 感觉 | 音程 |
-|------|------|------|------|
-| 上 | Add9 | 快乐明亮 | 根 + 大三 + 五度 + 九度 |
-| 右 | M7 | 温暖 | 根 + 大三 + 五度 + 大七 |
-| 下 | 7 | 蓝调 | 根 + 大三 + 五度 + 小七 |
-| 左 | sus4 | 悬浮 | 根 + 纯四 + 五度 + 八度 |
-
-选中方位后，左手在键盘上弹任何一个单音 → 以该音为根音触发整个和弦。
-
-### 🎵 旋律模式（右手弹，左手控）
-右手弹旋律的同时，左手在摄像头前叠加效果：
-
-| 手势 | 效果 |
-|------|------|
-| 手抬高 | 音量上升 + 混响加深 |
-| 手掌张开 | 鼓机 + 贝斯加入 |
-| 手腕旋转 | 颤音 / 滑音 |
-| 握拳 | 急停刹车（白噪声下扫 + 瞬间静音） |
+<p align="center">
+  🌐 <a href="https://chordhand.partykeys.org">chordhand.partykeys.org</a>
+</p>
 
 ---
 
-## 运行方式
+## Quick Links · 快速导航
 
-> ⚠ **不能双击 index.html 直接打开**。浏览器的 `file://` 协议禁用 Web MIDI、摄像头、ES modules。必须用本地 HTTP server 从 `http://localhost:...` 打开。
+| 文档 Document | 内容 Content |
+|---|---|
+| 📖 [PRODUCT.md](./PRODUCT.md) | **产品说明书** · 完整双语产品文档、功能清单、使用指南、技术架构 |
+| 🚀 [DEPLOY.md](./DEPLOY.md) | **部署攻略** · GitHub → Vercel → 自定义域名 全流程 |
+| 💻 [启动.command](./启动.command) / [start.command](./start.command) | **macOS 一键启动本地预览** |
 
-**最简单 —— macOS 直接双击**：
+---
 
-在 Finder 里双击 **`启动.command`**（首次请 **右键 → 打开**，跳过 Gatekeeper 警告）。
-终端会自动打开，HTTP server 起好后浏览器会跳到 `http://localhost:8080`。
+## What is this? · 这是什么
 
-**一键启动脚本**（macOS / Linux 终端）：
+**EN** —
+A browser-based gesture instrument. One hand plays a root note on your MIDI keyboard, the other hand enters the camera view and picks a chord color by moving through 8 zones: center top = Major, center bottom = minor, outer 6 = Maj7 · Add9 · 7 · m7 · dim · sus4. No music theory needed.
 
-```bash
-cd PartyKeys
-chmod +x run.sh   # 首次需要加执行权限
-./run.sh          # 启动 HTTP server + 自动开浏览器
-```
+**中文** —
+一件浏览器端的手势乐器。一只手在 MIDI 键盘上按根音，另一只手抬进摄像头，在 8 个区域之间移动选择和弦色彩：中心上 = 大三，中心下 = 小三，外环 6 区 = Maj7 · Add9 · 7 · m7 · dim · sus4。不需要和弦理论基础。
 
-**或手动**：
+---
 
+## Try it · 试一下
+
+### 线上 Online
+直接访问 **https://chordhand.partykeys.org**（需 Chrome / Edge + MIDI 键盘）
+
+### 本地 Local
 ```bash
 cd PartyKeys
 python3 -m http.server 8080
 # 浏览器访问 http://localhost:8080
 ```
 
-**浏览器要求**：**Chrome / Edge** —— Web MIDI API 目前 Firefox / Safari 都不支持。
+或双击 `启动.command` / `start.command`。
 
-**权限**：点页面上的「启动」按钮后，浏览器会依次弹出：
-1. 摄像头访问 → 允许
-2. MIDI 设备访问 → 允许
-
-如果没弹出授权提示，看页面顶部红色警告条——绝大多数情况是 `file://` 协议没用 HTTP server 打开。
-
-### 键位范围
-
-当前版本**只使用一个八度：C4–B4**（MIDI 60–71）。超出此范围的琴键会被折叠到这个八度里。
-
-**没有 PartyKeys 键盘？** 点「电脑键盘模式」：
-- 白键：<kbd>A S D F G H J</kbd> → C4 D4 E4 F4 G4 A4 B4
-- 黑键：<kbd>W E T Y U</kbd> → C#4 D#4 F#4 G#4 A#4
+⚠️ **不能双击 `index.html`** — `file://` 协议下浏览器禁用 Web MIDI / 摄像头 / ES Modules。页面会自动弹引导。
 
 ---
 
-## 技术栈
+## Requirements · 运行要求
 
-- **Web MIDI API** — 读 PartyKeys 36 Keys 输入
-- **MediaPipe Tasks Vision HandLandmarker**（CDN） — 双手追踪 + 21 关键点
-- **Web Audio API** — 钢琴多泛音合成、鼓机（合成）、贝斯、FB-delay 混响、LFO 颤音
-- **Vanilla JS (ES Modules)** — 零构建，直接丢 HTTP server 上跑
+| | EN | 中文 |
+|---|---|---|
+| **Browser** | Chrome / Edge (Chromium-based) | Chrome / Edge |
+| **Protocol** | HTTPS or localhost | HTTPS 或 localhost |
+| **MIDI Device** | Any USB MIDI keyboard (optional — keyboard fallback available) | 任意 USB MIDI 键盘（可选，有电脑键盘 fallback） |
+| **Camera** | Any webcam | 任意摄像头 |
 
-## 文件结构
-
-```
-PartyKeys/
-├── index.html               # 入口
-├── css/styles.css           # 样式
-├── js/
-│   ├── main.js              # 主入口：粘合所有模块
-│   ├── midi-input.js        # Web MIDI 输入 + keyboard fallback 注入口
-│   ├── hand-tracker.js      # MediaPipe 双手追踪
-│   ├── mode-machine.js      # 模式状态机 + 手势派生
-│   ├── audio-engine.js      # Web Audio 合成引擎（钢琴/鼓/贝斯/效果）
-│   ├── dial-ui.js           # 4 方位圆盘 Canvas 渲染
-│   ├── hud-ui.js            # 旋律 HUD + 键盘底部可视化
-│   └── keyboard-fallback.js # 电脑键盘模拟 MIDI
-└── README.md
-```
+Firefox / Safari 不支持（Web MIDI 缺失）。
 
 ---
 
-## 已知限制 / v2 待办
+## Feature Highlights · 功能亮点
 
-- 摄像头的「左右手」判定在不同摄像头/分辨率下偶尔会反。如果模式切错，在 `hand-tracker.js` 里把 `swapHandedness` 改成 `false`。
-- 鼓机和贝斯 BPM 固定 96，未与当前演奏同步。
-- 混响用的是 FB delay，不是真正的卷积混响。若需真实感可以换 ConvolverNode + IR 采样。
-- 目前没有发 SysEx 做 LED 反馈。如果想打通，参考 CLAUDE.md 里的 PartyKeys LED 协议，在 `main.js` 的和弦触发处调用 SysEx 点灯。
-- 和弦模式下没选中方位（手没举高或太靠近中心）时，退化成弹单音——如果希望强制要求选中才响应，在 `main.js` 的 `noteon` 监听里把 fallback 删掉。
+- 🎹 **5 合成音色** Piano / E-Piano / Acoustic / Electric / Pad
+- 🎨 **情绪标签模式** 外环显示 Happy / Warm / Hopeful / Tense / Sad / Blues + 情绪色
+- 🔀 **左右中位置切换** 圆环可移到屏幕左/中/右，不挡脸
+- 🧲 **1s 粘滞墙** 手滑出外环 1 秒内自动保持，防抖动
+- 🎸 **贝斯 + 鼓 one-shot** 每次按键打一下，同音连弹切换军鼓/底鼓
+- 🌐 **中英双语** 跟随系统语言，可手动切换
+- ⌨️ **键盘 fallback** 无 MIDI 设备时用 `ASDFGHJK + WE TYU`
+- 🎥 **摄像头透明度** 可调节画面透明度避免干扰
+
+完整功能列表见 [PRODUCT.md](./PRODUCT.md#3-功能清单--feature-list)。
+
+---
+
+## Architecture Overview · 架构概览
+
+```
+用户手势                 MIDI 键盘
+    ↓                      ↓
+MediaPipe HandLandmarker  Web MIDI API
+    ↓                      ↓
+  mode-machine.js  ←  midi-input.js
+       ↓                  ↓
+   dial-ui.js       audio-engine.js  ←  5 音色 + 贝斯 + 鼓
+       ↓                  ↓
+   Canvas 2D       Web Audio Graph
+       ↓                  ↓
+     显示                声音
+```
+
+详细设计决策 + 文件职责见 [PRODUCT.md § 6](./PRODUCT.md#6-技术架构--technical-architecture)。
+
+---
+
+## Deploy · 部署
+
+推送到 `PartyBohan/ChordHand` 仓库主分支，Vercel 自动部署到 `chordhand.partykeys.org`。
+
+```bash
+~/Desktop/ChordHand/push.sh "your commit message"
+```
+
+`push.sh` 会自动从 Claude 会话同步最新文件 → git commit → git push → Vercel 在 30 秒内重部署。详见 [DEPLOY.md](./DEPLOY.md)。
+
+---
+
+## License · 许可
+
+Internal prototype · PartyKeys / 视感科技 © 2026
+
+---
+
+<p align="center">
+  <i>If you're reading this and want to extend it, start with <a href="./PRODUCT.md">PRODUCT.md § 6</a> for architecture.</i>
+</p>
