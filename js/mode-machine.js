@@ -72,6 +72,9 @@ const OUTER_SECTORS = [
   { q: QUADRANT.DOM7, deg: 330 },
 ];
 
+/** 外环粘滞时间 —— 手不小心滑出外环时保留上一次 quadrant 的毫秒数 */
+const OUTER_STICKY_MS = 1000;
+
 export class ModeMachine extends EventTarget {
   constructor() {
     super();
@@ -90,6 +93,7 @@ export class ModeMachine extends EventTarget {
     this._candidateMode = MODE.IDLE;
     this._gestureHandStable = null;
     this._debounceMs = 180;
+    this._lastOuterTs = 0; // 最近一次停在外环的时间戳
   }
 
   update(hands, ts) {
@@ -132,29 +136,50 @@ export class ModeMachine extends EventTarget {
       );
     }
 
-    if (s.mode === MODE.CHORD && gestureHand) {
-      s.gestureHand = gestureHand;
-      s.playingHand = gestureHand === "right" ? "left" : "right";
-      this._derivePosition(hands[gestureHand]);
+    if (s.mode === MODE.CHORD) {
+      // 进入 CHORD 时才更新 gestureHand；但如果 gestureHand 暂时丢失，保留上一次
+      if (gestureHand) {
+        s.gestureHand = gestureHand;
+        s.playingHand = gestureHand === "right" ? "left" : "right";
+      }
+      const hand = gestureHand ? hands[gestureHand] : null;
+      this._derivePosition(hand, ts);
     } else {
       s.gestureHand = null;
       s.playingHand = null;
       s.quadrant = null;
       s.padActive = false;
+      this._lastOuterTs = 0;
     }
 
     this.dispatchEvent(new CustomEvent("update", { detail: s }));
   }
 
-  _derivePosition(hand) {
+  _derivePosition(hand, ts) {
     const s = this.state;
+    const isOuter = (q) =>
+      q && q !== QUADRANT.CENTER_UP && q !== QUADRANT.CENTER_DOWN;
+
+    // 手势丢失：如果刚才在外环，保留 quadrant 最多 1s（防止滑出）
     if (!hand) {
+      if (isOuter(s.quadrant) && ts - this._lastOuterTs < OUTER_STICKY_MS) {
+        // 保持 padActive / quadrant / padX / padY 不变
+        return;
+      }
       s.padActive = false;
       s.quadrant = null;
       return;
     }
+
     const rawX = (hand.palm.x - _padCenterX) / PAD_HALF_W;
     const rawY = -(hand.palm.y - PAD_CENTER_Y) / PAD_HALF_H;
+
+    // 手滑出检测区很远（±1.3 以上）：如果刚才在外环，保留
+    const farOut = Math.abs(rawX) > 1.3 || Math.abs(rawY) > 1.3;
+    if (farOut && isOuter(s.quadrant) && ts - this._lastOuterTs < OUTER_STICKY_MS) {
+      return; // 粘墙：保持上一次
+    }
+
     s.padX = Math.max(-1, Math.min(1, rawX));
     s.padY = Math.max(-1, Math.min(1, rawY));
     s.padActive = true;
@@ -167,12 +192,13 @@ export class ModeMachine extends EventTarget {
       s.quadrant = s.padY >= 0 ? QUADRANT.CENTER_UP : QUADRANT.CENTER_DOWN;
       return;
     }
-    // 外环 6 区：每 60° 一格，中心角 30/90/150/210/270/330
-    const ang = Math.atan2(s.padY, s.padX); // -π..π
+    // 外环 6 区：每 60° 一格
+    const ang = Math.atan2(s.padY, s.padX);
     let deg = (ang * 180) / Math.PI;
     if (deg < 0) deg += 360;
     const idx = Math.floor(deg / 60) % 6;
     s.quadrant = OUTER_SECTORS[idx].q;
+    this._lastOuterTs = ts; // 标记"最近在外环"
   }
 }
 
