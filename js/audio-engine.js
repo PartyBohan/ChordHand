@@ -6,13 +6,13 @@
 //   - setMasterVol / setVoice / toggleBassShot / toggleDrumShot
 // =============================================================
 
-export const VOICES = ["piano", "ep", "guzheng", "pad", "vocal"];
+export const VOICES = ["piano", "ep", "acoustic", "electric", "pad"];
 export const VOICE_LABELS = {
   piano: "钢琴",
   ep: "电钢",
-  guzheng: "古筝",
+  acoustic: "木吉他",
+  electric: "电吉他",
   pad: "Pad",
-  vocal: "唱诗班",
 };
 
 export class AudioEngine {
@@ -142,97 +142,73 @@ export class AudioEngine {
   // ==========================================================
   _makeVoice(note, gain) {
     switch (this.params.voice) {
-      case "ep":      return this._epVoice(note, gain);
-      case "guzheng": return this._guzhengVoice(note, gain);
-      case "pad":     return this._padVoice(note, gain);
-      case "vocal":   return this._vocalVoice(note, gain);
+      case "ep":       return this._epVoice(note, gain);
+      case "acoustic": return this._acousticGuitarVoice(note, gain);
+      case "electric": return this._electricGuitarVoice(note, gain);
+      case "pad":      return this._padVoice(note, gain);
       case "piano":
-      default:        return this._pianoVoice(note, gain);
+      default:         return this._pianoVoice(note, gain);
     }
   }
 
-  // -- 唱诗班 "啊" (多人齐唱 + 颤音 + 共振峰 + 大混响) --
-  _vocalVoice(note, gain) {
+  // -- 电吉他 (mid-boost + 咬弦 sawtooth + 长 sustain) --
+  _electricGuitarVoice(note, gain) {
     const ctx = this.ctx;
     const t0 = ctx.currentTime;
     const freq = midiToFreq(note);
-    const { outGain, revSend } = this._makeOutput(0.95); // 极重混响 = 教堂感
+    const { outGain, revSend } = this._makeOutput(0.22); // 中等偏少混响（电吉他偏干）
 
-    const sourceSum = ctx.createGain();
-    sourceSum.gain.value = 0.22;
-    const sources = [];
+    // 去低 boomy
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 110;
 
-    // --- 颤音 LFO：5.5Hz 约 25 cents 深度，模拟人声 vibrato ---
-    const vibrato = ctx.createOscillator();
-    vibrato.type = "sine";
-    vibrato.frequency.value = 5.5;
-    const vibDepth = ctx.createGain();
-    vibDepth.gain.value = freq * 0.014; // ~25 cents
-    vibrato.connect(vibDepth);
-    sources.push({ osc: vibrato });
+    // Mid boost —— 电吉他"咬"的核心频段
+    const midBoost = ctx.createBiquadFilter();
+    midBoost.type = "peaking";
+    midBoost.frequency.value = 1400;
+    midBoost.Q.value = 1.2;
+    midBoost.gain.value = 6;
 
-    // --- 4 路微失调 sawtooth：多人齐唱 chorus 感 ---
-    for (const det of [-22, -8, 8, 22]) {
-      const osc = ctx.createOscillator();
-      osc.type = "sawtooth";
-      osc.frequency.value = freq;
-      osc.detune.value = det;
-      vibDepth.connect(osc.frequency);
-      osc.connect(sourceSum);
-      sources.push({ osc });
-    }
-    // --- 1 路 triangle 低八度：给胸腔共鸣感 ---
-    const sub = ctx.createOscillator();
-    sub.type = "triangle";
-    sub.frequency.value = freq * 0.5;
-    vibDepth.connect(sub.frequency);
-    const subG = ctx.createGain();
-    subG.gain.value = 0.35;
-    sub.connect(subG);
-    subG.connect(sourceSum);
-    sources.push({ osc: sub });
+    // 动态低通：刚拨亮，过会儿收敛
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(5800, t0);
+    lp.frequency.exponentialRampToValueAtTime(3200, t0 + 0.9);
+    lp.Q.value = 0.9;
 
-    // --- "啊" 元音共振峰：F1=730 / F2=1090 / F3=2440 ---
-    const FORMANTS = [
-      { f: 730,  Q: 10, g: 1.0 },
-      { f: 1090, Q: 11, g: 0.65 },
-      { f: 2440, Q: 12, g: 0.3 },
+    const mid = ctx.createGain();
+    mid.gain.value = 1;
+    mid.connect(hp);
+    hp.connect(midBoost);
+    midBoost.connect(lp);
+    lp.connect(outGain);
+
+    // sawtooth/square 为主 —— 富泛音，像 overdriven pickup
+    const partials = [
+      { ratio: 1,    level: 1.00, type: "sawtooth", det: 0  },
+      { ratio: 2,    level: 0.52, type: "sawtooth", det: -5 },
+      { ratio: 3,    level: 0.30, type: "square",   det: 0  },
+      { ratio: 4,    level: 0.18, type: "square",   det: 5  },
+      { ratio: 5.02, level: 0.10, type: "sine",     det: 0  },
     ];
-    const mix = ctx.createGain();
-    mix.gain.value = 1;
-    for (const fm of FORMANTS) {
-      const bp = ctx.createBiquadFilter();
-      bp.type = "bandpass";
-      bp.frequency.value = fm.f;
-      bp.Q.value = fm.Q;
+    const oscs = [];
+    for (const p of partials) {
+      const osc = ctx.createOscillator();
+      osc.type = p.type;
+      osc.detune.value = p.det;
+      osc.frequency.value = freq * p.ratio;
       const g = ctx.createGain();
-      g.gain.value = fm.g;
-      sourceSum.connect(bp);
-      bp.connect(g);
-      g.connect(mix);
+      g.gain.value = p.level;
+      osc.connect(g);
+      g.connect(mid);
+      osc.start(t0);
+      oscs.push({ osc, g });
     }
 
-    // --- 一点气声：白噪声高通，模拟呼吸 ---
-    const noise = ctx.createBufferSource();
-    noise.buffer = this._getNoiseBuf();
-    noise.loop = true;
-    const noiseHP = ctx.createBiquadFilter();
-    noiseHP.type = "highpass";
-    noiseHP.frequency.value = 3000;
-    const noiseG = ctx.createGain();
-    noiseG.gain.value = 0.025;
-    noise.connect(noiseHP);
-    noiseHP.connect(noiseG);
-    noiseG.connect(mix);
-    sources.push({ osc: noise });
-
-    mix.connect(outGain);
-
-    // 启动所有振荡器
-    sources.forEach(({ osc }) => { try { osc.start(t0); } catch {} });
-    // 慢起慢落 —— 唱诗班典型包络
-    this._adsr(outGain, t0, 0.55, 0.38 * gain, 0.9, 2.4);
-    return this._voiceHandle(sources, outGain, revSend);
+    // 快起 + 较长 sustain（电吉他有持续能量）
+    this._adsr(outGain, t0, 0.006, 0.40 * gain, 0.55, 2.4);
+    return this._voiceHandle(oscs, outGain, revSend);
   }
 
   // -- 钢琴 (亮, 短 decay) --
@@ -289,48 +265,55 @@ export class AudioEngine {
     return this._voiceHandle(oscs, outGain, revSend);
   }
 
-  // -- 古筝 (拨弦亮度扫 + 快起超长尾 + 轻 pitch-drop) --
-  _guzhengVoice(note, gain) {
+  // -- 木吉他 (拨弦 + 箱体共鸣 + 温暖中频) --
+  _acousticGuitarVoice(note, gain) {
     const ctx = this.ctx;
     const t0 = ctx.currentTime;
     const freq = midiToFreq(note);
-    const { outGain, revSend } = this._makeOutput(0.45);
+    const { outGain, revSend } = this._makeOutput(0.32); // 温暖中等混响
 
-    // 亮度扫：high → mid，模拟"嘣"的一下拨弦后归于柔和
+    // 亮度扫：亮拨弦 → 温暖
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.setValueAtTime(7000, t0);
-    lp.frequency.exponentialRampToValueAtTime(1400, t0 + 1.2);
-    lp.Q.value = 1.0;
+    lp.frequency.setValueAtTime(4800, t0);
+    lp.frequency.exponentialRampToValueAtTime(1500, t0 + 0.9);
+    lp.Q.value = 0.85;
+
+    // 箱体共鸣峰 —— 木吉他的标志，~110-130Hz
+    const body = ctx.createBiquadFilter();
+    body.type = "peaking";
+    body.frequency.value = 120;
+    body.Q.value = 2.2;
+    body.gain.value = 6;
 
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 110;
+    hp.frequency.value = 75;
 
     const mid = ctx.createGain();
     mid.gain.value = 1;
     mid.connect(hp);
-    hp.connect(lp);
+    hp.connect(body);
+    body.connect(lp);
     lp.connect(outGain);
 
-    // 多泛音 + 轻微 detune 让弦更"活"
+    // triangle/sine 泛音 —— 温暖、不刺
     const partials = [
-      { ratio: 1,     level: 1.00, type: "triangle", det: 0 },
-      { ratio: 2,     level: 0.50, type: "triangle", det: -3 },
-      { ratio: 3.002, level: 0.32, type: "sine",     det: 4 },
-      { ratio: 4,     level: 0.18, type: "sine",     det: 0 },
-      { ratio: 5.01,  level: 0.10, type: "sine",     det: -2 },
-      { ratio: 6,     level: 0.06, type: "sine",     det: 3 },
+      { ratio: 1,     level: 1.00, type: "triangle", det: 0  },
+      { ratio: 2,     level: 0.52, type: "triangle", det: -2 },
+      { ratio: 3,     level: 0.30, type: "sine",     det: 3  },
+      { ratio: 4,     level: 0.16, type: "sine",     det: 0  },
+      { ratio: 5,     level: 0.08, type: "sine",     det: -3 },
     ];
     const oscs = [];
     for (const p of partials) {
       const osc = ctx.createOscillator();
       osc.type = p.type;
       osc.detune.value = p.det;
-      // 轻微 pitch drop —— 模拟拨弦瞬间的微微松紧
+      // 拨弦瞬间微 pitch drop
       const f = freq * p.ratio;
       osc.frequency.setValueAtTime(f * 1.006, t0);
-      osc.frequency.exponentialRampToValueAtTime(f, t0 + 0.07);
+      osc.frequency.exponentialRampToValueAtTime(f, t0 + 0.06);
       const g = ctx.createGain();
       g.gain.value = p.level;
       osc.connect(g);
@@ -339,8 +322,24 @@ export class AudioEngine {
       oscs.push({ osc, g });
     }
 
-    // 快起 + 超长指数衰减（~3 秒尾音）
-    this._adsr(outGain, t0, 0.005, 0.58 * gain, 0.04, 3.0);
+    // 拨指指尖噪声 —— 一次性白噪 burst
+    const click = ctx.createBufferSource();
+    click.buffer = this._getNoiseBuf();
+    const clickBP = ctx.createBiquadFilter();
+    clickBP.type = "bandpass";
+    clickBP.frequency.value = 2500;
+    clickBP.Q.value = 1.2;
+    const clickG = ctx.createGain();
+    clickG.gain.setValueAtTime(0.18 * gain, t0);
+    clickG.gain.exponentialRampToValueAtTime(0.001, t0 + 0.04);
+    click.connect(clickBP);
+    clickBP.connect(clickG);
+    clickG.connect(outGain);
+    click.start(t0);
+    click.stop(t0 + 0.08);
+
+    // 快起 + 中等长尾（~2s）
+    this._adsr(outGain, t0, 0.005, 0.55 * gain, 0.05, 2.0);
     return this._voiceHandle(oscs, outGain, revSend);
   }
 
