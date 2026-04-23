@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="lg1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="55%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+    <linearGradient id="lg2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f472b6"/>
+      <stop offset="60%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#fde047"/>
+    </linearGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
+    </filter>
+  </defs>
+  <!-- 左下圆环 -->
+  <circle cx="72" cy="128" r="54" stroke="url(#lg1)" stroke-width="18" stroke-linecap="round"/>
+  <!-- 右上方框 -->
+  <rect x="78" y="18" width="104" height="104" rx="18" stroke="url(#lg2)" stroke-width="18" stroke-linejoin="round"/>
+  <!-- 右下小圆点 -->
+  <circle cx="170" cy="158" r="12" fill="url(#lg2)"/>
+</svg>

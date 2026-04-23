@@ -24,6 +24,7 @@ import { enableKeyboardFallback } from "./keyboard-fallback.js";
 
 // ---------- DOM ----------
 const elBtnStart = document.getElementById("btn-start");
+const elHero = document.getElementById("hero-screen");
 const elBtnKbd = document.getElementById("btn-kbd-fallback");
 const elBtnHelp = document.getElementById("btn-help");
 const elBtnHelpClose = document.getElementById("btn-help-close");
@@ -90,10 +91,13 @@ function showLoading(show) {
 // =============================================================
 // 启动按钮
 // =============================================================
-elBtnStart.addEventListener("click", async () => {
+async function handleStart() {
   if (state.started) return;
   elBtnStart.disabled = true;
-  elBtnStart.textContent = "启动中…";
+  const startText = elBtnStart.querySelector(".hero-start-text");
+  if (startText) startText.textContent = "启动中…";
+  // 淡出 hero 屏
+  if (elHero) elHero.classList.add("hidden");
   showLoading(true);
   setLoadStep("audio", "active");
   setLoadStep("model", null);
@@ -140,9 +144,11 @@ elBtnStart.addEventListener("click", async () => {
 
   await Promise.allSettled([midiPromise, camPromise]);
   state.started = true;
-  elBtnStart.textContent = "运行中";
+  if (startText) startText.textContent = "运行中";
   setTimeout(() => showLoading(false), 500);
-});
+}
+
+elBtnStart.addEventListener("click", handleStart);
 
 // =============================================================
 // 键盘 fallback

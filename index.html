@@ -12,6 +12,7 @@
   <link rel="preload" as="fetch" crossorigin
         href="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task" />
 
+  <link rel="icon" href="logo.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/styles.css" />
 
   <!-- ⚠ 关键：内联非模块脚本，在一切依赖之前先检测运行环境。
@@ -107,9 +108,9 @@
     <!-- 顶部条 -->
     <header id="topbar">
       <div class="brand">
-        <span class="brand-glyph">◐</span>
+        <img class="brand-logo" src="logo.svg" alt="PartyKeys" />
         <span class="brand-name">PartyKeys</span>
-        <span class="brand-tag">Gesture × Keys</span>
+        <span class="brand-tag">ChordHand</span>
       </div>
       <div class="status">
         <span id="status-midi" class="chip">· MIDI</span>
@@ -117,7 +118,6 @@
         <span id="status-mode" class="chip chip-mode">待机</span>
       </div>
       <div class="controls">
-        <button id="btn-start" class="btn btn-primary">启 动</button>
         <button id="btn-kbd-fallback" class="btn" title="用电脑键盘模拟琴键">键盘模式</button>
         <button id="btn-help" class="btn btn-ghost" title="帮助">?</button>
       </div>
@@ -170,6 +170,53 @@
     <main id="stage">
       <video id="camera-video" playsinline autoplay muted></video>
       <canvas id="camera-overlay"></canvas>
+
+      <!-- 开机 Hero 屏 —— 启动前铺满全屏 -->
+      <div id="hero-screen">
+        <div class="hero-inner">
+          <div class="hero-logo-row">
+            <img class="hero-logo" src="logo.svg" alt="PartyKeys" />
+            <div class="hero-brand">
+              <div class="hero-brand-name">PartyKeys</div>
+              <div class="hero-brand-sub">ChordHand · 手势和弦</div>
+            </div>
+          </div>
+
+          <h1 class="hero-slogan">
+            <span class="hero-slogan-en">One hand plays. The other paints.</span>
+            <span class="hero-slogan-zh">一手弹琴 · 一手指尖涂抹和弦色彩</span>
+          </h1>
+
+          <!-- 彩虹键盘（持续发光） -->
+          <div class="hero-keyboard" aria-hidden="true">
+            <div class="hk-key hk-white" style="--i:0"><span class="hk-glow"></span></div>
+            <div class="hk-key hk-white" style="--i:1"><span class="hk-glow"></span></div>
+            <div class="hk-key hk-white" style="--i:2"><span class="hk-glow"></span></div>
+            <div class="hk-key hk-white" style="--i:3"><span class="hk-glow"></span></div>
+            <div class="hk-key hk-white" style="--i:4"><span class="hk-glow"></span></div>
+            <div class="hk-key hk-white" style="--i:5"><span class="hk-glow"></span></div>
+            <div class="hk-key hk-white" style="--i:6"><span class="hk-glow"></span></div>
+            <div class="hk-key hk-white" style="--i:7"><span class="hk-glow"></span></div>
+            <div class="hk-blacks">
+              <div class="hk-key hk-black" style="--i:0"><span class="hk-glow"></span></div>
+              <div class="hk-key hk-black" style="--i:1"><span class="hk-glow"></span></div>
+              <div class="hk-key hk-black" style="--i:2"><span class="hk-glow"></span></div>
+              <div class="hk-key hk-black" style="--i:3"><span class="hk-glow"></span></div>
+              <div class="hk-key hk-black" style="--i:4"><span class="hk-glow"></span></div>
+            </div>
+          </div>
+
+          <button id="btn-start" class="hero-start">
+            <span class="hero-start-ring"></span>
+            <span class="hero-start-text">启 动</span>
+            <span class="hero-start-hint">Start</span>
+          </button>
+
+          <div class="hero-foot">
+            首次启动需要授权 <b>摄像头</b> 与 <b>MIDI</b> · 仅支持 Chrome / Edge
+          </div>
+        </div>
+      </div>
 
       <!-- 中央控制台：只剩和弦圆盘 -->
       <div id="console-wrap">
