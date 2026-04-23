@@ -109,35 +109,79 @@
     <header id="topbar">
       <div class="brand">
         <img class="brand-logo" src="logo.svg" alt="PartyKeys" />
-        <span class="brand-name">PartyKeys</span>
-        <span class="brand-tag">ChordHand</span>
+        <span class="brand-name" data-i18n="brand_name">PartyKeys</span>
+        <span class="brand-tag" data-i18n="brand_tag">ChordHand</span>
       </div>
       <div class="status">
-        <span id="status-midi" class="chip">· MIDI</span>
-        <span id="status-camera" class="chip">· 摄像头</span>
-        <span id="status-mode" class="chip chip-mode">待机</span>
+        <span id="status-midi" class="chip">MIDI</span>
+        <span id="status-camera" class="chip">Camera</span>
+        <span id="status-mode" class="chip chip-mode">Normal</span>
       </div>
       <div class="controls">
-        <button id="btn-kbd-fallback" class="btn" title="用电脑键盘模拟琴键">键盘模式</button>
-        <button id="btn-help" class="btn btn-ghost" title="帮助">?</button>
+        <!-- 语言切换 -->
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button class="lang-pill" data-lang="en">EN</button>
+          <button class="lang-pill" data-lang="zh">中</button>
+        </div>
+
+        <!-- 键盘模式 + 悬浮提示 -->
+        <div class="btn-with-tip">
+          <button id="btn-kbd-fallback" class="btn"
+                  data-i18n-attr="title:btn_kbd_title">
+            <span data-i18n="btn_kbd">Keyboard Mode</span>
+          </button>
+          <div class="kbd-tip" role="tooltip">
+            <div class="kbd-tip-title" data-i18n="kbd_tip_title">Play without a MIDI keyboard</div>
+            <div class="kbd-tip-row">
+              <div class="kbd-tip-label" data-i18n="kbd_tip_white">White</div>
+              <div class="kbd-tip-keys">
+                <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd><kbd>K</kbd>
+              </div>
+            </div>
+            <div class="kbd-tip-row">
+              <div class="kbd-tip-label" data-i18n="kbd_tip_black">Black</div>
+              <div class="kbd-tip-keys">
+                <kbd>W</kbd><kbd>E</kbd><kbd class="spacer"></kbd><kbd>T</kbd><kbd>Y</kbd><kbd>U</kbd>
+              </div>
+            </div>
+            <div class="kbd-tip-legend">
+              C D E F G A B C &nbsp;·&nbsp; C♯ D♯ &nbsp; F♯ G♯ A♯
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-help" class="btn btn-ghost"
+                data-i18n-attr="title:btn_help_title">?</button>
       </div>
     </header>
 
-    <!-- 控制条（八度 / 音量 / 音色 / 贝斯 / 鼓） -->
+    <!-- 控制条（八度 / 音量 / 音色 / 节奏） -->
     <div id="controlbar">
       <!-- 八度 -->
       <div class="cb-group">
-        <div class="cb-label">八度</div>
+        <div class="cb-label">
+          <span class="cb-icon cb-icon-oct" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </span>
+          <span data-i18n="label_octave">Octave</span>
+        </div>
         <div class="cb-stepper">
-          <button id="btn-oct-down" class="cb-step" title="低一个八度">−</button>
+          <button id="btn-oct-down" class="cb-step"
+                  data-i18n-attr="title:tip_oct_down">−</button>
           <span id="oct-display" class="cb-stepper-val">C4–C5</span>
-          <button id="btn-oct-up" class="cb-step" title="高一个八度">+</button>
+          <button id="btn-oct-up" class="cb-step"
+                  data-i18n-attr="title:tip_oct_up">+</button>
         </div>
       </div>
 
       <!-- 音量 -->
       <div class="cb-group cb-group-wide">
-        <div class="cb-label">音量</div>
+        <div class="cb-label">
+          <span class="cb-icon cb-icon-vol" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          </span>
+          <span data-i18n="label_volume">Volume</span>
+        </div>
         <div class="cb-slider-wrap">
           <input id="vol-slider" type="range" min="0" max="100" value="85" />
           <span id="vol-display" class="cb-slider-val">85</span>
@@ -146,22 +190,36 @@
 
       <!-- 乐器音色 -->
       <div class="cb-group">
-        <div class="cb-label">音色</div>
+        <div class="cb-label">
+          <span class="cb-icon cb-icon-voice" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="4" x2="8" y2="14"/><line x1="12" y1="4" x2="12" y2="14"/><line x1="16" y1="4" x2="16" y2="14"/></svg>
+          </span>
+          <span data-i18n="label_voice">Voice</span>
+        </div>
         <div class="cb-pills" id="voice-pills">
-          <button class="cb-pill active" data-voice="piano">钢琴</button>
-          <button class="cb-pill" data-voice="ep">电钢</button>
-          <button class="cb-pill" data-voice="organ">风琴</button>
-          <button class="cb-pill" data-voice="pad">Pad</button>
-          <button class="cb-pill" data-voice="vocal">人声</button>
+          <button class="cb-pill active" data-voice="piano"   data-i18n="voice_piano">Piano</button>
+          <button class="cb-pill"         data-voice="ep"      data-i18n="voice_ep">E-Piano</button>
+          <button class="cb-pill"         data-voice="organ"   data-i18n="voice_organ">Organ</button>
+          <button class="cb-pill"         data-voice="pad"     data-i18n="voice_pad">Pad</button>
+          <button class="cb-pill"         data-voice="vocal"   data-i18n="voice_vocal">Vocal</button>
         </div>
       </div>
 
       <!-- 节奏点缀 -->
       <div class="cb-group">
-        <div class="cb-label">节奏</div>
+        <div class="cb-label">
+          <span class="cb-icon cb-icon-rhythm" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9a7 7 0 0 1 14 0v4a7 7 0 0 1-14 0z"/><ellipse cx="12" cy="9" rx="7" ry="3"/><line x1="5" y1="13" x2="19" y2="13"/></svg>
+          </span>
+          <span data-i18n="label_rhythm">Rhythm</span>
+        </div>
         <div class="cb-pills">
-          <button id="btn-bass" class="cb-pill" title="按下和弦时打一下贝斯根音">🎸 贝斯</button>
-          <button id="btn-drum" class="cb-pill" title="按下和弦时打一下头拍（底鼓+镲）">🥁 鼓</button>
+          <button id="btn-bass" class="cb-pill"
+                  data-i18n="btn_bass"
+                  data-i18n-attr="title:tip_bass">🎸 Bass</button>
+          <button id="btn-drum" class="cb-pill"
+                  data-i18n="btn_drum"
+                  data-i18n-attr="title:tip_drum">🥁 Drum</button>
         </div>
       </div>
     </div>
@@ -177,14 +235,14 @@
           <div class="hero-logo-row">
             <img class="hero-logo" src="logo.svg" alt="PartyKeys" />
             <div class="hero-brand">
-              <div class="hero-brand-name">PartyKeys</div>
-              <div class="hero-brand-sub">ChordHand · 手势和弦</div>
+              <div class="hero-brand-name" data-i18n="hero_brand_name">PartyKeys</div>
+              <div class="hero-brand-sub"  data-i18n="hero_brand_sub">ChordHand · Gesture Chords</div>
             </div>
           </div>
 
           <h1 class="hero-slogan">
-            <span class="hero-slogan-en">One hand plays. The other paints.</span>
-            <span class="hero-slogan-zh">一手弹琴 · 一手指尖涂抹和弦色彩</span>
+            <span class="hero-slogan-main" data-i18n="slogan_main">One hand plays. The other paints.</span>
+            <span class="hero-slogan-sub"  data-i18n="slogan_sub">Notes in your fingers, chord colors in the air.</span>
           </h1>
 
           <!-- 彩虹键盘（持续发光） -->
@@ -208,12 +266,12 @@
 
           <button id="btn-start" class="hero-start">
             <span class="hero-start-ring"></span>
-            <span class="hero-start-text">启 动</span>
-            <span class="hero-start-hint">Start</span>
+            <span class="hero-start-text" data-i18n="start">Start</span>
+            <span class="hero-start-hint" data-i18n="start_hint">Tap to begin</span>
           </button>
 
-          <div class="hero-foot">
-            首次启动需要授权 <b>摄像头</b> 与 <b>MIDI</b> · 仅支持 Chrome / Edge
+          <div class="hero-foot" data-i18n="hero_foot">
+            First launch requires <b>Camera</b> + <b>MIDI</b> permissions · Chrome / Edge only
           </div>
         </div>
       </div>
@@ -223,8 +281,8 @@
         <div id="chord-dial" class="overlay hidden">
           <canvas id="dial-canvas"></canvas>
           <div class="dial-caption">
-            <span class="cap-hand" id="cap-playing-hand">弹琴的手 · </span>
-            <span id="cap-gesture-hand" class="cap-gesture">抬起的手移动到任意区即触发</span>
+            <span class="cap-hand" id="cap-playing-hand"></span>
+            <span id="cap-gesture-hand" class="cap-gesture" data-i18n="dial_hint_default">Raise a hand to pick a chord</span>
           </div>
         </div>
       </div>
@@ -240,50 +298,42 @@
     <!-- 加载遮罩 -->
     <div id="loading-overlay" class="loading-overlay hidden">
       <div class="loading-card">
-        <div class="loading-brand">PartyKeys 正在启动</div>
+        <div class="loading-brand" data-i18n="loading_brand">Starting PartyKeys</div>
         <ol class="loading-steps">
           <li class="loading-step" data-step="audio">
-            <span class="step-dot"></span><span class="step-text">启动音频引擎</span>
+            <span class="step-dot"></span><span class="step-text" data-i18n="loading_audio">Starting audio engine</span>
           </li>
           <li class="loading-step" data-step="model">
-            <span class="step-dot"></span><span class="step-text">下载手势识别模型 <span class="step-sub">(~5MB，仅首次)</span></span>
+            <span class="step-dot"></span><span class="step-text"><span data-i18n="loading_model">Downloading hand model</span> <span class="step-sub" data-i18n="loading_model_sub">(~5MB, first launch only)</span></span>
           </li>
           <li class="loading-step" data-step="camera">
-            <span class="step-dot"></span><span class="step-text">请求摄像头授权</span>
+            <span class="step-dot"></span><span class="step-text" data-i18n="loading_camera">Requesting camera access</span>
           </li>
           <li class="loading-step" data-step="midi">
-            <span class="step-dot"></span><span class="step-text">请求 MIDI 授权</span>
+            <span class="step-dot"></span><span class="step-text" data-i18n="loading_midi">Requesting MIDI access</span>
           </li>
         </ol>
-        <div class="loading-hint">首次启动最慢 5–20 秒，之后模型会走浏览器缓存秒开。</div>
+        <div class="loading-hint" data-i18n="loading_hint">First launch takes 5–20s; cached afterwards.</div>
       </div>
     </div>
 
     <!-- 帮助浮层 -->
     <div id="help-panel" class="panel hidden">
       <div class="panel-card">
-        <h2>玩法速览</h2>
+        <h2 data-i18n="help_title">Quick Start</h2>
         <div class="help-grid">
           <div class="help-row">
-            <div class="help-badge normal">普通</div>
-            <div class="help-desc"><b>双手都在键盘上</b> —— 正常 MIDI 单音发声。</div>
+            <div class="help-badge normal" data-i18n="help_badge_normal">NORMAL</div>
+            <div class="help-desc" data-i18n="help_normal"><b>Both hands on the keyboard</b> → normal MIDI notes.</div>
           </div>
           <div class="help-row">
-            <div class="help-badge chord">和弦</div>
-            <div class="help-desc">
-              <b>一只手弹琴 + 另一只手抬起</b><br/>
-              <small>
-                抬起的那只手在 <b>8 个区域</b>切换和弦色彩：<br/>
-                · 中心上半 = <span class="tag">Major</span>　中心下半 = <span class="tag">minor</span><br/>
-                · 外环 6 区（顺时针从上起）：<span class="tag">Maj7</span> · <span class="tag">Add9</span> · <span class="tag">7</span> · <span class="tag">m7</span> · <span class="tag">dim</span> · <span class="tag">sus4</span><br/>
-                按一个单音，整组和弦以该音为根音触发。
-              </small>
-            </div>
+            <div class="help-badge chord" data-i18n="help_badge_chord">CHORD</div>
+            <div class="help-desc" data-i18n="help_chord"></div>
           </div>
         </div>
-        <p class="small">顶部控制条：调八度 · 调音量 · 换音色（钢琴/电钢/风琴/Pad/人声）· 开关贝斯/鼓 one-shot（每次按和弦打一下头拍）。</p>
-        <p class="small">没有 PartyKeys 键盘？点「键盘模式」，用 <kbd>A S D F G H J K</kbd> 8 个白键（C→C），<kbd>W E T Y U</kbd> 5 个黑键，跟随当前八度。</p>
-        <button id="btn-help-close" class="btn btn-primary">知道了</button>
+        <p class="small" data-i18n="help_foot"></p>
+        <p class="small" data-i18n="help_kbd"></p>
+        <button id="btn-help-close" class="btn btn-primary" data-i18n="help_close">Got it</button>
       </div>
     </div>
   </div>

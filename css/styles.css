@@ -159,12 +159,32 @@ html, body {
 }
 .cb-group-wide { flex: 1 1 280px; max-width: 420px; min-width: 240px; }
 .cb-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1.6px;
-  color: var(--ink-dim);
+  color: var(--ink);
   font-weight: 700;
 }
+.cb-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba(244,114,182,0.22), rgba(167,139,250,0.22));
+  border: 1px solid rgba(167,139,250,0.35);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(167,139,250,0.22), inset 0 1px 0 rgba(255,255,255,0.12);
+  flex-shrink: 0;
+}
+.cb-icon svg { display: block; }
+.cb-icon-oct    { color: #f9a8d4; }
+.cb-icon-vol    { color: #93c5fd; }
+.cb-icon-voice  { color: #c4b5fd; }
+.cb-icon-rhythm { color: #fcd34d; }
 .cb-stepper {
   display: flex; align-items: center; gap: 4px;
   background: rgba(255, 255, 255, 0.04);
@@ -316,11 +336,6 @@ html, body {
   width: 68px; height: 68px;
   object-fit: contain;
   filter: drop-shadow(0 8px 30px rgba(167, 139, 250, 0.55));
-  animation: hero-logo-spin 22s linear infinite;
-}
-@keyframes hero-logo-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
 }
 .hero-brand {
   text-align: left;
@@ -347,8 +362,10 @@ html, body {
   margin: 6px 0 4px;
   display: flex; flex-direction: column; gap: 8px;
   align-items: center;
+  font-weight: 400; /* reset h1 default */
 }
-.hero-slogan-en {
+.hero-slogan-main, .hero-slogan-sub { display: block; }
+.hero-slogan-main {
   font-size: 30px;
   font-weight: 700;
   line-height: 1.25;
@@ -356,10 +373,10 @@ html, body {
   color: #fff;
   text-shadow: 0 4px 24px rgba(167, 139, 250, 0.35);
 }
-.hero-slogan-zh {
+.hero-slogan-sub {
   font-size: 15px;
   color: var(--ink-dim);
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   font-weight: 500;
 }
 
@@ -427,35 +444,44 @@ html, body {
     inset 0 -4px 8px rgba(0, 0, 0, 0.6),
     0 4px 0 rgba(0, 0, 0, 0.5);
 }
-/* 彩虹发光条（在每个键底部） */
+/* 彩虹光照：铺满整个键，用呼吸 opacity 变化 */
 .hk-glow {
   position: absolute;
-  left: 8%; right: 8%;
-  bottom: 6%;
-  height: 22%;
-  border-radius: 999px;
-  opacity: 0.95;
-  filter: blur(1.5px);
+  inset: 0;
+  border-radius: inherit;
   animation: hk-breathe 3.2s ease-in-out infinite;
   animation-delay: calc(var(--i) * -0.22s);
+  pointer-events: none;
 }
 .hk-white .hk-glow {
-  background: hsl(calc(var(--i) * 45), 92%, 65%);
+  background:
+    linear-gradient(
+      180deg,
+      hsla(calc(var(--i) * 45), 95%, 72%, 0.35) 0%,
+      hsla(calc(var(--i) * 45), 95%, 60%, 0.78) 65%,
+      hsla(calc(var(--i) * 45), 95%, 50%, 0.92) 100%
+    );
   box-shadow:
-    0 0 16px 4px hsl(calc(var(--i) * 45), 92%, 60%),
-    0 0 32px 8px hsl(calc(var(--i) * 45), 92%, 55%);
+    inset 0 -30px 40px hsla(calc(var(--i) * 45), 95%, 55%, 0.45),
+    inset 0 6px 12px hsla(calc(var(--i) * 45), 95%, 80%, 0.4),
+    0 0 38px hsla(calc(var(--i) * 45), 95%, 55%, 0.45);
 }
 .hk-black .hk-glow {
-  left: 12%; right: 12%;
-  height: 16%;
-  background: hsl(calc(var(--i) * 72 + 200), 90%, 70%);
+  background:
+    linear-gradient(
+      180deg,
+      hsla(calc(var(--i) * 72 + 200), 92%, 72%, 0.35) 0%,
+      hsla(calc(var(--i) * 72 + 200), 92%, 60%, 0.75) 65%,
+      hsla(calc(var(--i) * 72 + 200), 92%, 50%, 0.9) 100%
+    );
   box-shadow:
-    0 0 14px 3px hsl(calc(var(--i) * 72 + 200), 90%, 65%),
-    0 0 26px 7px hsl(calc(var(--i) * 72 + 200), 90%, 55%);
+    inset 0 -20px 30px hsla(calc(var(--i) * 72 + 200), 92%, 55%, 0.55),
+    inset 0 4px 10px hsla(calc(var(--i) * 72 + 200), 92%, 80%, 0.45),
+    0 0 24px hsla(calc(var(--i) * 72 + 200), 92%, 55%, 0.45);
 }
 @keyframes hk-breathe {
-  0%, 100% { opacity: 0.55; transform: scaleY(0.85); }
-  50%      { opacity: 1;    transform: scaleY(1.15); }
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1;    }
 }
 
 /* 中央启动按钮 */
@@ -819,3 +845,136 @@ html, body {
   line-height: 1.6;
 }
 .panel-card button { margin-top: 4px; }
+
+/* ---------- 语言切换 ---------- */
+.lang-switch {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.lang-pill {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all 0.18s;
+  letter-spacing: 0.5px;
+  min-width: 36px;
+}
+.lang-pill:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.lang-pill.active {
+  background: var(--grad-brand);
+  color: #0a0b1e;
+  box-shadow: 0 3px 10px rgba(167, 139, 250, 0.4);
+}
+
+/* ---------- 键盘模式 悬浮提示 ---------- */
+.btn-with-tip {
+  position: relative;
+}
+.kbd-tip {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 300px;
+  padding: 14px 16px;
+  background: rgba(14, 16, 42, 0.96);
+  border: 1px solid var(--stroke-strong);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.18s, transform 0.18s;
+  pointer-events: none;
+  z-index: 70;
+}
+.btn-with-tip:hover .kbd-tip,
+.btn-with-tip:focus-within .kbd-tip {
+  opacity: 1;
+  transform: translateY(0);
+}
+.kbd-tip::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 32px;
+  width: 10px;
+  height: 10px;
+  background: rgba(14, 16, 42, 0.96);
+  border-left: 1px solid var(--stroke-strong);
+  border-top: 1px solid var(--stroke-strong);
+  transform: rotate(45deg);
+}
+.kbd-tip-title {
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  font-weight: 700;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--stroke);
+}
+.kbd-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.kbd-tip-row:last-of-type { margin-bottom: 0; }
+.kbd-tip-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  min-width: 42px;
+  font-weight: 700;
+}
+.kbd-tip-keys {
+  display: flex;
+  gap: 3px;
+}
+.kbd-tip-keys kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--stroke);
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.kbd-tip-keys kbd.spacer {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  width: 12px;
+}
+.kbd-tip-legend {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--stroke);
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-family: var(--font-mono);
+  color: var(--ink-mute);
+  text-align: center;
+}

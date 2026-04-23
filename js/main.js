@@ -21,6 +21,15 @@ import { audio, VOICES } from "./audio-engine.js";
 import { ChordDial } from "./dial-ui.js";
 import { Keybed } from "./hud-ui.js";
 import { enableKeyboardFallback } from "./keyboard-fallback.js";
+import { detectLang, setLang, getLang, t } from "./i18n.js";
+
+// =============================================================
+// 启动时先初始化语言：跟随系统 / localStorage，默认英语
+// =============================================================
+setLang(detectLang());
+document.querySelectorAll(".lang-pill").forEach((b) => {
+  b.addEventListener("click", () => setLang(b.dataset.lang));
+});
 
 // ---------- DOM ----------
 const elBtnStart = document.getElementById("btn-start");
@@ -59,6 +68,11 @@ const state = {
   started: false,
   activeKeybedNotes: new Set(),
   triggerFlash: 0,
+  // 保存最后一次的状态 kind，用于语言切换时重新渲染文本
+  midi: { kind: "warn", key: "midi_not_connected", text: "" },
+  cam:  { kind: "warn", key: "cam_not_connected", text: "" },
+  mode: MODE.NORMAL,
+  kbdActive: false,
 };
 
 // =============================================================
@@ -95,7 +109,7 @@ async function handleStart() {
   if (state.started) return;
   elBtnStart.disabled = true;
   const startText = elBtnStart.querySelector(".hero-start-text");
-  if (startText) startText.textContent = "启动中…";
+  if (startText) startText.textContent = getLang() === "zh" ? "启动中…" : "Starting…";
   // 淡出 hero 屏
   if (elHero) elHero.classList.add("hidden");
   showLoading(true);
@@ -104,8 +118,8 @@ async function handleStart() {
   setLoadStep("camera", null);
   setLoadStep("midi", null);
 
-  setMidiStatus("warn", "等待授权…");
-  setCamStatus("warn", "等待授权…");
+  setMidiStatusByKey("warn", "midi_waiting");
+  setCamStatusByKey("warn", "cam_waiting");
 
   try {
     await audio.start();
@@ -115,7 +129,7 @@ async function handleStart() {
   } catch (err) {
     console.error("[audio]", err);
     setLoadStep("audio", "fail");
-    elBtnStart.textContent = "音频启动失败";
+    if (startText) startText.textContent = getLang() === "zh" ? "音频失败" : "Audio failed";
     elBtnStart.disabled = false;
     return;
   }
@@ -144,7 +158,7 @@ async function handleStart() {
 
   await Promise.allSettled([midiPromise, camPromise]);
   state.started = true;
-  if (startText) startText.textContent = "运行中";
+  if (startText) startText.textContent = getLang() === "zh" ? "运行中" : "Running";
   setTimeout(() => showLoading(false), 500);
 }
 
@@ -162,10 +176,13 @@ elBtnKbd.addEventListener("click", async () => {
     }
     enableKeyboardFallback();
     elBtnKbd.classList.add("btn-primary");
-    elBtnKbd.textContent = "键盘 ✓";
-    setMidiStatus("ok", "电脑键盘已启用");
+    state.kbdActive = true;
+    // 改 label 文本 + 去掉 i18n 绑定，避免被语言切换重置
+    const labelSpan = elBtnKbd.querySelector("[data-i18n]");
+    if (labelSpan) labelSpan.textContent = t("btn_kbd_active");
+    setMidiStatusByKey("ok", "btn_kbd_active_status");
   } catch (err) {
-    setMidiStatus("err", "启用失败：" + err.message);
+    setMidiStatusRaw("err", err.message || "error");
   }
 });
 
@@ -220,27 +237,70 @@ elBtnDrum.addEventListener("click", () => {
 });
 
 // =============================================================
-// 状态 chips
+// 状态 chips（i18n-aware）
 // =============================================================
+const MIDI_KIND_TO_KEY = {
+  pk:          "midi_pk",
+  generic:     "__generic__",   // 用设备名 + 后缀
+  none:        "midi_none",
+  denied:      "midi_denied",
+  unsupported: "midi_unsupported",
+};
+const MIDI_KIND_TO_CHIP = {
+  pk: "ok", generic: "ok", none: "warn", denied: "err", unsupported: "err",
+};
+
 midi.addEventListener("status", (e) => {
-  const { kind, text } = e.detail;
-  const map = { pk: "ok", generic: "ok", none: "warn", denied: "err", unsupported: "err" };
-  setMidiStatus(map[kind] || "warn", text);
+  const { kind } = e.detail;
+  const chipCls = MIDI_KIND_TO_CHIP[kind] || "warn";
+  if (kind === "generic") {
+    // 保留设备名
+    const devName = (midi.deviceName || "MIDI").replace(/\s*\(.*?\)\s*$/, "");
+    state.midi = { kind: chipCls, key: null, text: `${devName} · ${t("midi_generic_suffix")}` };
+  } else {
+    state.midi = { kind: chipCls, key: MIDI_KIND_TO_KEY[kind] || null, text: "" };
+  }
+  renderMidiChip();
 });
-function setMidiStatus(kind, text) {
-  elMidiChip.className = `chip chip-${kind}`;
-  elMidiChip.textContent = `MIDI · ${text}`;
+
+function setMidiStatusByKey(chipCls, key) {
+  state.midi = { kind: chipCls, key, text: "" };
+  renderMidiChip();
 }
-function setCamStatus(kind, text) {
-  elCamChip.className = `chip chip-${kind}`;
-  elCamChip.textContent = `摄像头 · ${text}`;
+function setMidiStatusRaw(chipCls, text) {
+  state.midi = { kind: chipCls, key: null, text };
+  renderMidiChip();
+}
+function renderMidiChip() {
+  const s = state.midi;
+  const prefix = t("chip_midi_prefix");
+  const text = s.key ? t(s.key) : s.text;
+  elMidiChip.className = `chip chip-${s.kind}`;
+  elMidiChip.textContent = `${prefix} · ${text}`;
+}
+
+function setCamStatusByKey(chipCls, key) {
+  state.cam = { kind: chipCls, key, text: "" };
+  renderCamChip();
+}
+function setCamStatusRaw(chipCls, text) {
+  state.cam = { kind: chipCls, key: null, text };
+  renderCamChip();
+}
+function renderCamChip() {
+  const s = state.cam;
+  const prefix = t("chip_cam_prefix");
+  const text = s.key ? t(s.key) : s.text;
+  elCamChip.className = `chip chip-${s.kind}`;
+  elCamChip.textContent = `${prefix} · ${text}`;
 }
 
 handTracker.addEventListener("status", (e) => {
-  const { kind, text } = e.detail;
-  const cls = kind === "ok" ? "ok" : kind === "error" || kind === "denied" ? "err" : "warn";
-  const cleaned = text.replace(/^摄像头[:：]\s*/, "");
-  setCamStatus(cls, cleaned);
+  const { kind } = e.detail;
+  if (kind === "ok") setCamStatusByKey("ok", "cam_connected");
+  else if (kind === "loading") setCamStatusByKey("warn", "cam_waiting");
+  else if (kind === "denied") setCamStatusByKey("err", "cam_denied");
+  else setCamStatusByKey("warn", "cam_not_connected");
 });
 
 // =============================================================
@@ -265,17 +325,23 @@ modeMachine.addEventListener("update", (e) => {
 });
 
 function setModeUI(mode) {
-  const labels = { idle: "待机", normal: "普通", chord: "和弦模式" };
-  elModeChip.textContent = labels[mode] || "普通";
+  state.mode = mode;
+  const keyMap = { idle: "mode_idle", normal: "mode_normal", chord: "mode_chord" };
+  elModeChip.textContent = t(keyMap[mode] || "mode_normal");
   elDial.classList.toggle("hidden", mode !== MODE.CHORD);
 }
 
 function updateDialCaption(s) {
   if (s.mode === MODE.CHORD && s.gestureHand) {
-    const playHand = s.playingHand === "left" ? "左手" : "右手";
-    const gestureHand = s.gestureHand === "left" ? "左手" : "右手";
-    elCapPlaying.textContent = `${playHand}弹琴 · `;
-    elCapGesture.textContent = `${gestureHand}移动到任意区即触发`;
+    elCapPlaying.textContent = t(
+      s.playingHand === "left" ? "dial_left_plays" : "dial_right_plays"
+    );
+    elCapGesture.textContent = t(
+      s.gestureHand === "left" ? "dial_left_gesture" : "dial_right_gesture"
+    );
+  } else {
+    elCapPlaying.textContent = "";
+    elCapGesture.textContent = t("dial_hint_default");
   }
 }
 
@@ -389,12 +455,30 @@ function renderCameraOverlay(hands) {
       ctx.fill();
     }
     ctx.font = "bold 13px -apple-system,sans-serif";
-    ctx.fillText(side === "left" ? "左手" : "右手", px(hand.palm) - 16, py(hand.palm) - 20);
+    const label = getLang() === "zh"
+      ? (side === "left" ? "左手" : "右手")
+      : (side === "left" ? "L" : "R");
+    ctx.fillText(label, px(hand.palm) - 16, py(hand.palm) - 20);
     ctx.restore();
   }
 }
 
+// =============================================================
+// 语言切换时：重新渲染那些通过 JS 设置文本的地方
+// =============================================================
+window.addEventListener("langchange", () => {
+  renderMidiChip();
+  renderCamChip();
+  setModeUI(state.mode);
+  updateDialCaption(modeMachine.state);
+  // 如果键盘模式已开启，保持 "Keyboard ✓" 的翻译版本
+  if (state.kbdActive) {
+    const labelSpan = elBtnKbd.querySelector("[data-i18n]");
+    if (labelSpan) labelSpan.textContent = t("btn_kbd_active");
+  }
+});
+
 // 初始显示
 setModeUI(MODE.NORMAL);
-setMidiStatus("warn", "未连接");
-setCamStatus("warn", "未连接");
+setMidiStatusByKey("warn", "midi_not_connected");
+setCamStatusByKey("warn", "cam_not_connected");
