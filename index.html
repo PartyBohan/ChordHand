@@ -329,6 +329,38 @@
       </div>
     </div>
 
+    <!-- 使用引导（首次进入时自动弹出） -->
+    <div id="onboarding-panel" class="panel hidden">
+      <div class="panel-card onboarding-card">
+        <h2 data-i18n="onboard_title">Ready to play</h2>
+        <p class="onboarding-subtitle" data-i18n="onboard_subtitle">Two hands. One plays notes. The other paints chords.</p>
+        <div class="onboarding-steps">
+          <div class="onboard-step">
+            <div class="onboard-step-num">1</div>
+            <div class="onboard-step-text">
+              <b data-i18n="onboard_step1_b">Play a root note</b>
+              <span data-i18n="onboard_step1_t">on your MIDI keyboard — this sets the chord's root.</span>
+            </div>
+          </div>
+          <div class="onboard-step">
+            <div class="onboard-step-num">2</div>
+            <div class="onboard-step-text">
+              <b data-i18n="onboard_step2_b">Raise your other hand</b>
+              <span data-i18n="onboard_step2_t">into the camera view above the keyboard.</span>
+            </div>
+          </div>
+          <div class="onboard-step">
+            <div class="onboard-step-num">3</div>
+            <div class="onboard-step-text">
+              <b data-i18n="onboard_step3_b">Move to pick a color</b>
+              <span data-i18n="onboard_step3_t">Center top = Major · Center bottom = minor · Outer ring = 6 tensions.</span>
+            </div>
+          </div>
+        </div>
+        <button id="btn-onboard-close" class="btn btn-primary" data-i18n="onboard_go">Let's play</button>
+      </div>
+    </div>
+
     <!-- 帮助浮层 -->
     <div id="help-panel" class="panel hidden">
       <div class="panel-card">

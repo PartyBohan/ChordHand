@@ -15,7 +15,6 @@ import {
   modeMachine,
   MODE,
   QUADRANT_TO_CHORD,
-  PAD_LAYOUT,
 } from "./mode-machine.js";
 import { audio, VOICES } from "./audio-engine.js";
 import { ChordDial } from "./dial-ui.js";
@@ -38,6 +37,8 @@ const elBtnKbd = document.getElementById("btn-kbd-fallback");
 const elBtnHelp = document.getElementById("btn-help");
 const elBtnHelpClose = document.getElementById("btn-help-close");
 const elHelp = document.getElementById("help-panel");
+const elOnboard = document.getElementById("onboarding-panel");
+const elBtnOnboardClose = document.getElementById("btn-onboard-close");
 const elMidiChip = document.getElementById("status-midi");
 const elCamChip = document.getElementById("status-camera");
 const elModeChip = document.getElementById("status-mode");
@@ -67,8 +68,8 @@ const keybed = new Keybed(elKeybedCanvas);
 const state = {
   started: false,
   activeKeybedNotes: new Set(),
+  keybedDirty: true,       // 只在音符集合变化时重画底部键盘
   triggerFlash: 0,
-  // 保存最后一次的状态 kind，用于语言切换时重新渲染文本
   midi: { kind: "warn", key: "midi_not_connected", text: "" },
   cam:  { kind: "warn", key: "cam_not_connected", text: "" },
   mode: MODE.NORMAL,
@@ -159,8 +160,23 @@ async function handleStart() {
   await Promise.allSettled([midiPromise, camPromise]);
   state.started = true;
   if (startText) startText.textContent = getLang() === "zh" ? "运行中" : "Running";
-  setTimeout(() => showLoading(false), 500);
+  setTimeout(() => {
+    showLoading(false);
+    // 彻底把 hero 屏从渲染树拿掉，防止它在后面继续吃 GPU
+    if (elHero) elHero.style.display = "none";
+    // 首次进入 → 弹引导；如果用户之前看过就不再弹
+    let seen = false;
+    try { seen = localStorage.getItem("chordhand_onboarded") === "1"; } catch {}
+    if (!seen) {
+      elOnboard.classList.remove("hidden");
+    }
+  }, 500);
 }
+
+elBtnOnboardClose.addEventListener("click", () => {
+  elOnboard.classList.add("hidden");
+  try { localStorage.setItem("chordhand_onboarded", "1"); } catch {}
+});
 
 elBtnStart.addEventListener("click", handleStart);
 
@@ -391,6 +407,7 @@ function updateDialCaption(s) {
 midi.addEventListener("noteon", (e) => {
   const { note, velocity } = e.detail;
   state.activeKeybedNotes.add(note);
+  state.keybedDirty = true;
 
   const s = modeMachine.state;
   if (s.mode === MODE.CHORD && s.quadrant) {
@@ -401,7 +418,6 @@ midi.addEventListener("noteon", (e) => {
     state.triggerFlash = 1;
   } else {
     audio.noteOn(note, velocity);
-    // Normal 模式下也可以触发节奏点缀
     audio.triggerBassShot(note);
     audio.triggerDrumShot(note);
   }
@@ -410,12 +426,16 @@ midi.addEventListener("noteon", (e) => {
 midi.addEventListener("noteoff", (e) => {
   const { note } = e.detail;
   state.activeKeybedNotes.delete(note);
+  state.keybedDirty = true;
   if (audio.chordActive.has(note)) audio.chordOff(note);
   else audio.noteOff(note);
 });
 
 // =============================================================
-// 渲染循环
+// 渲染循环 —— 轻量化：
+//   · 和弦圆盘只在 CHORD 模式下画
+//   · 底部键盘只在 keybedDirty 时画
+//   · trigger flash 衰减推动 dial 重绘
 // =============================================================
 function renderLoop() {
   if (state.triggerFlash > 0) {
@@ -424,107 +444,82 @@ function renderLoop() {
   }
   const s = modeMachine.state;
   if (s.mode === MODE.CHORD) chordDial.draw(s, state.triggerFlash);
-  keybed.draw(state.activeKeybedNotes);
+  if (state.keybedDirty) {
+    keybed.draw(state.activeKeybedNotes);
+    state.keybedDirty = false;
+  }
   requestAnimationFrame(renderLoop);
 }
 renderLoop();
 
+// 窗口变化时也需要重画一次 keybed
+window.addEventListener("resize", () => {
+  state.keybedDirty = true;
+});
+
 // =============================================================
-// 摄像头叠加
+// 摄像头叠加 —— 精简版：只画关键点，不再每帧重跑 DPR + 无手时跳过
 // =============================================================
+const _camCtx = elCamCanvas.getContext("2d", { alpha: true, desynchronized: true });
+let _camW = 0, _camH = 0, _camDPR = 0;
+
+const HAND_CONN = [
+  [0, 1, 2, 3, 4],
+  [0, 5, 6, 7, 8],
+  [0, 9, 10, 11, 12],
+  [0, 13, 14, 15, 16],
+  [0, 17, 18, 19, 20],
+  [5, 9, 13, 17],
+];
+
 function renderCameraOverlay(hands) {
   const canvas = elCamCanvas;
-  const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
+  // 只有尺寸真正变化时才 resize + setTransform
   if (
-    canvas.width !== canvas.clientWidth * dpr ||
-    canvas.height !== canvas.clientHeight * dpr
+    canvas.clientWidth !== _camW ||
+    canvas.clientHeight !== _camH ||
+    dpr !== _camDPR
   ) {
-    canvas.width = canvas.clientWidth * dpr;
-    canvas.height = canvas.clientHeight * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    _camW = canvas.clientWidth;
+    _camH = canvas.clientHeight;
+    _camDPR = dpr;
+    canvas.width = _camW * dpr;
+    canvas.height = _camH * dpr;
+    _camCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
+  const w = _camW, h = _camH, ctx = _camCtx;
   ctx.clearRect(0, 0, w, h);
 
-  const px = (lm) => lm.x * w;
-  const py = (lm) => lm.y * h;
-
-  // 手势操作区提示 —— 加亮，方便用户找到
-  const padX = (PAD_LAYOUT.CENTER_X - PAD_LAYOUT.HALF_W) * w;
-  const padY = (PAD_LAYOUT.CENTER_Y - PAD_LAYOUT.HALF_H) * h;
-  const padW = PAD_LAYOUT.HALF_W * 2 * w;
-  const padH = PAD_LAYOUT.HALF_H * 2 * h;
-  ctx.save();
-  // 主框：紫色虚线
-  ctx.strokeStyle = "rgba(167, 139, 250, 0.55)";
-  ctx.setLineDash([8, 8]);
-  ctx.lineWidth = 2;
-  ctx.strokeRect(padX, padY, padW, padH);
-  // 四角高亮
-  ctx.setLineDash([]);
-  ctx.strokeStyle = "rgba(244, 114, 182, 0.9)";
-  ctx.lineWidth = 3;
-  const CL = 20;
-  const corners = [
-    [padX, padY, 1, 1],
-    [padX + padW, padY, -1, 1],
-    [padX, padY + padH, 1, -1],
-    [padX + padW, padY + padH, -1, -1],
-  ];
-  for (const [cx, cy, dx, dy] of corners) {
-    ctx.beginPath();
-    ctx.moveTo(cx, cy + CL * dy);
-    ctx.lineTo(cx, cy);
-    ctx.lineTo(cx + CL * dx, cy);
-    ctx.stroke();
-  }
-  // 标签
-  ctx.fillStyle = "rgba(244, 114, 182, 0.95)";
-  ctx.font = "700 11px -apple-system, sans-serif";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "bottom";
-  const label = t("pad_zone_label");
-  ctx.fillText(label, padX + 6, padY - 4);
-  ctx.restore();
+  // 两只手都没检测到 → 直接返回，省掉后面的 save/restore 等开销
+  if (!hands.left && !hands.right) return;
 
   for (const side of ["left", "right"]) {
     const hand = hands[side];
     if (!hand) continue;
     const color = side === "left" ? "#38bdf8" : "#f472b6";
     const points = hand.landmarks;
-    const CONN = [
-      [0, 1, 2, 3, 4],
-      [0, 5, 6, 7, 8],
-      [0, 9, 10, 11, 12],
-      [0, 13, 14, 15, 16],
-      [0, 17, 18, 19, 20],
-      [5, 9, 13, 17],
-    ];
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth = 2.5;
     ctx.globalAlpha = 0.75;
-    for (const chain of CONN) {
+    for (const chain of HAND_CONN) {
       ctx.beginPath();
-      ctx.moveTo(px(points[chain[0]]), py(points[chain[0]]));
+      const p0 = points[chain[0]];
+      ctx.moveTo(p0.x * w, p0.y * h);
       for (let i = 1; i < chain.length; i++) {
-        ctx.lineTo(px(points[chain[i]]), py(points[chain[i]]));
+        const p = points[chain[i]];
+        ctx.lineTo(p.x * w, p.y * h);
       }
       ctx.stroke();
     }
     ctx.fillStyle = color;
-    for (const p of points) {
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
       ctx.beginPath();
-      ctx.arc(px(p), py(p), 3, 0, Math.PI * 2);
+      ctx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.font = "bold 13px -apple-system,sans-serif";
-    const label = getLang() === "zh"
-      ? (side === "left" ? "左手" : "右手")
-      : (side === "left" ? "L" : "R");
-    ctx.fillText(label, px(hand.palm) - 16, py(hand.palm) - 20);
     ctx.restore();
   }
 }

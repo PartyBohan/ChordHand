@@ -313,6 +313,12 @@ html, body {
   pointer-events: none;
   transform: scale(1.04);
 }
+/* hero 隐藏时彻底停掉彩虹键盘的 CSS 动画，避免继续吃合成线程 */
+#hero-screen.hidden .hk-glow,
+#hero-screen.hidden .hero-start-ring,
+#hero-screen.hidden .hero-start-ring::after {
+  animation: none !important;
+}
 
 .hero-inner {
   position: relative;
@@ -590,8 +596,8 @@ html, body {
   width: 100%; height: 100%;
   object-fit: cover;
   opacity: 0.22;
-  filter: saturate(1.1) contrast(0.95);
-  transform: scaleX(-1);
+  transform: scaleX(-1) translateZ(0);
+  will-change: opacity, transform;
   z-index: 1;
 }
 #camera-overlay {
@@ -599,6 +605,7 @@ html, body {
   width: 100%; height: 100%;
   z-index: 2;
   pointer-events: none;
+  transform: translateZ(0);
 }
 
 /* ---------- 中央控制台 ---------- */
@@ -1077,4 +1084,72 @@ html, body {
   text-transform: uppercase;
   color: var(--ink-mute);
   font-weight: 700;
+}
+
+/* ---------- 入门引导面板 ---------- */
+.onboarding-card {
+  max-width: 580px;
+  padding: 32px 36px 28px;
+}
+.onboarding-card h2 {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+.onboarding-subtitle {
+  text-align: center;
+  color: var(--ink-dim);
+  font-size: 14px;
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+.onboarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.onboard-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+}
+.onboard-step-num {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--grad-brand);
+  color: #0a0b1e;
+  font-weight: 900;
+  font-size: 15px;
+  box-shadow: 0 4px 14px rgba(167, 139, 250, 0.4);
+}
+.onboard-step-text {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.onboard-step-text b {
+  display: block;
+  color: #fff;
+  margin-bottom: 3px;
+  font-weight: 700;
+}
+.onboard-step-text span {
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+.onboarding-card > button {
+  display: block;
+  margin: 0 auto;
+  padding: 11px 36px;
+  font-size: 14px;
+  letter-spacing: 2px;
 }
